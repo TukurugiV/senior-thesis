@@ -1,0 +1,31 @@
+<!-- The content below will be included at the end of the <head> element. -->
+<style>
+  /* シンタックスハイライト無効化 */
+  pre, pre code, pre code *, pre .token, pre [class*="token"], pre [class*="hljs"] {
+    color: #000 !important;
+    background-color: transparent !important;
+    font-style: normal !important;
+    font-weight: normal !important;
+    text-shadow: none !important;
+  }
+  pre, pre.code-block {
+    background-color: #f5f5f5 !important;
+  }
+</style>
+<script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", function () {
+    // coverDataから表紙を生成
+    const data = window.coverData;
+    if (data) {
+      const title = document.getElementById("cover-title");
+      const author = document.getElementById("cover-author");
+      const affiliation = document.getElementById("cover-affiliation");
+      const date = document.getElementById("cover-date");
+
+      if (title) title.textContent = data.title || "";
+      if (author) author.textContent = data.author || "";
+      if (affiliation) affiliation.textContent = data.affiliation || "";
+      if (date) date.textContent = data.date || "";
+    }
+  });
+</script>

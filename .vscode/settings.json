@@ -1,0 +1,10 @@
+{
+  "markdown-preview-enhanced.codeBlockTheme": "default.css",
+  "markdown-preview-enhanced.usePandocParser": true,
+  "markdown-preview-enhanced.pandocArguments": [
+    "--defaults=pandoc/defaults.yaml"
+  ],
+  "markdown-preview-enhanced.pandocMarkdownFlavor": "markdown+fenced_divs+bracketed_spans+yaml_metadata_block",
+  "markdown-preview-enhanced.pdfExportEngine": "lualatex",
+  "markdown-preview-enhanced.latexEngine": "lualatex"
+}

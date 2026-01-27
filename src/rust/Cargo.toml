@@ -1,0 +1,9 @@
+[package]
+name = "imu_orientation_rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serialport = "4.3"
+anyhow = "1.0"
+socket2 = "0.5"

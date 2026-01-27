@@ -1,0 +1,51 @@
+% 論文向けLaTeXヘッダー
+% カスタム環境の定義
+
+% 段落の1行目を字下げ（セクション直後も含む）
+\usepackage{indentfirst}
+\usepackage{etoolbox}
+\makeatletter
+\let\@afterindentfalse\@afterindenttrue
+\@afterindenttrue
+\makeatother
+
+% 必要なパッケージ
+\usepackage{amsthm}
+\setcounter{secnumdepth}{3} % 章番号を表示
+
+% 数式番号をセクションごとにリセット
+\numberwithin{equation}{section}
+
+% 図番号をセクションごとにリセット
+\numberwithin{figure}{section}
+
+% 表番号をセクションごとにリセット
+\numberwithin{table}{section}
+
+% 日本語用の環境名定義
+\theoremstyle{definition}
+
+% 定理環境
+\newtheorem{theorem}{定理}[section]
+
+% 補題環境
+\newtheorem{lemma}{補題}[section]
+
+% 定義環境
+\newtheorem{definition}{定義}[section]
+
+% 例環境
+\newtheorem{example}{例}[section]
+
+% アルゴリズム環境
+\newtheorem{algorithm}{アルゴリズム}[section]
+
+% 注釈環境（番号なし）
+\theoremstyle{remark}
+\newtheorem*{note}{注}
+
+% 警告環境（番号なし）
+\newtheorem*{warning}{警告}
+
+% 証明環境（amsthmのデフォルトを使用、日本語化）
+\renewcommand{\proofname}{証明}

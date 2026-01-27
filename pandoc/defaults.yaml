@@ -1,0 +1,52 @@
+# Pandoc デフォルト設定 (PDF出力用)
+# 使用方法: pandoc -d pandoc/defaults.yaml sample_paper.md -o output.pdf
+
+# 入力形式
+from: markdown+fenced_divs+bracketed_spans+yaml_metadata_block
+
+# 出力設定
+pdf-engine: lualatex
+
+# 日本語対応
+variables:
+  lang: ja
+  linestretch: 1.25
+  parskip: 0.5em
+  documentclass: ltjsarticle
+  classoption:
+    - a4paper
+    - 11pt
+  geometry:
+    - top=30mm
+    - bottom=30mm
+    - left=20mm
+    - right=20mm
+    - headheight=15pt
+    - headsep=10mm
+    - footskip=12mm
+  mainfont: "Harano Aji Mincho"
+  sansfont: "Harano Aji Gothic"
+  monofont: "Harano Aji Gothic"
+
+# フィルター
+filters:
+  - pandoc-crossref
+  - pandoc/paper-filter.lua
+
+# ヘッダー
+
+
+# クロスリファレンス設定
+metadata:
+  figPrefix: "図"
+  figureTitle: "図"
+  tblPrefix: "表"
+  tableTitle: "表"
+  eqnPrefix: "式"
+  secPrefix: "節"
+  lstPrefix: "リスト"
+  numberSections: true
+
+# 目次
+toc: true
+number-sections: true

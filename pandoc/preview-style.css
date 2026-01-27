@@ -1,0 +1,13 @@
+/* Markdown Preview Enhanced用スタイル */
+
+/* 折り返し行のぶら下げインデント */
+p {
+  padding-left: 1em;
+  text-indent: -1em;
+}
+
+/* リストはぶら下げインデントを適用しない */
+li > p {
+  padding-left: 0;
+  text-indent: 0;
+}

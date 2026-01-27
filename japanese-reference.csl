@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" class="in-text" version="1.0" demote-non-dropping-particle="sort-only" default-locale="ja-JP">
+  <info>
+    <title>Japanese Academic Style</title>
+    <id>http://www.zotero.org/styles/japanese-academic</id>
+    <author>
+      <name>Custom Style</name>
+    </author>
+    <category citation-format="numeric"/>
+    <category field="generic-base"/>
+    <updated>2024-01-01T00:00:00+00:00</updated>
+  </info>
+
+  <!-- 引用番号のスタイル [1], [2] -->
+  <citation collapse="citation-number">
+    <sort>
+      <key variable="citation-number"/>
+    </sort>
+    <layout prefix="[" suffix="]" delimiter=", ">
+      <text variable="citation-number"/>
+    </layout>
+  </citation>
+
+  <!-- 参考文献リストのスタイル -->
+  <bibliography entry-spacing="0" second-field-align="flush">
+    <sort>
+      <key variable="citation-number"/>
+    </sort>
+    <layout>
+      <!-- 番号 -->
+      <text variable="citation-number" prefix="[" suffix="]"/>
+
+      <!-- 著者 -->
+      <names variable="author" prefix=" " suffix=",">
+        <name delimiter=", " delimiter-precedes-last="never" and="text" name-as-sort-order="all"/>
+      </names>
+
+      <!-- タイトル -->
+      <text variable="title" prefix=" " suffix=","/>
+
+      <!-- 文献タイプ別の処理 -->
+      <choose>
+        <!-- Webページ -->
+        <if type="webpage post-weblog">
+          <!-- Webサイト名称 -->
+          <text variable="container-title" prefix=" " suffix="."/>
+          <!-- URL -->
+          <text variable="URL" prefix=" "/>
+          <!-- 参照日 -->
+          <date variable="accessed" prefix="," suffix="(参照日)">
+            <date-part name="year"/>
+            <date-part name="month" form="numeric-leading-zeros" prefix="-"/>
+            <date-part name="day" form="numeric-leading-zeros" prefix="-"/>
+          </date>
+        </if>
+
+        <!-- 雑誌論文・ジャーナル -->
+        <else-if type="article-journal article">
+          <!-- 雑誌名 -->
+          <text variable="container-title" prefix=" " suffix=","/>
+          <!-- URL（あれば） -->
+          <text variable="URL" prefix=" " suffix=","/>
+          <!-- 発行日 -->
+          <date variable="issued">
+            <date-part name="year"/>
+            <date-part name="month" form="numeric-leading-zeros" prefix="-"/>
+            <date-part name="day" form="numeric-leading-zeros" prefix="-"/>
+          </date>
+        </else-if>
+
+        <!-- 学会発表・会議論文 -->
+        <else-if type="paper-conference">
+          <text variable="container-title" prefix=" " suffix=","/>
+          <text variable="URL" prefix=" " suffix=","/>
+          <date variable="issued">
+            <date-part name="year"/>
+            <date-part name="month" form="numeric-leading-zeros" prefix="-"/>
+            <date-part name="day" form="numeric-leading-zeros" prefix="-"/>
+          </date>
+        </else-if>
+
+        <!-- arXiv等のプレプリント (misc) -->
+        <else-if type="report manuscript">
+          <text variable="publisher" prefix=" " suffix=","/>
+          <text variable="URL" prefix=" " suffix=","/>
+          <date variable="issued">
+            <date-part name="year"/>
+            <date-part name="month" form="numeric-leading-zeros" prefix="-"/>
+            <date-part name="day" form="numeric-leading-zeros" prefix="-"/>
+          </date>
+        </else-if>
+
+        <!-- 書籍 -->
+        <else-if type="book">
+          <text variable="publisher" prefix=" " suffix=","/>
+          <date variable="issued">
+            <date-part name="year"/>
+          </date>
+        </else-if>
+
+        <!-- その他（misc含む） -->
+        <else>
+          <text variable="container-title" prefix=" " suffix=","/>
+          <text variable="note" prefix=" " suffix=","/>
+          <text variable="URL" prefix=" " suffix=","/>
+          <date variable="issued">
+            <date-part name="year"/>
+            <date-part name="month" form="numeric-leading-zeros" prefix="-"/>
+            <date-part name="day" form="numeric-leading-zeros" prefix="-"/>
+          </date>
+        </else>
+      </choose>
+    </layout>
+  </bibliography>
+</style>

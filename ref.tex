@@ -1,0 +1,791 @@
+\documentclass[a4paper,11pt]{ltjsarticle}
+
+%ハイパーリンク
+\usepackage[dvipdfmx]{hyperref}
+\usepackage{pxjahyper}
+%pdf
+\usepackage{pdfpages}
+% 数式
+\usepackage{amsmath,amsfonts}
+\usepackage{bm}
+% 画像
+\usepackage{graphics}
+\usepackage{graphicx}
+\usepackage{here} %画像の表示位置調整用
+\usepackage{type1cm}
+
+\usepackage[hang,small,bf]{caption}
+\usepackage[subrefformat=parens]{subcaption}
+\captionsetup{compatibility=false}
+
+\usepackage{bm}
+
+\makeatletter
+\newcommand{\figcaption}[1]{\def\@captype{figure}\caption{#1}}
+\newcommand{\tblcaption}[1]{\def\@captype{table}\caption{#1}}
+\makeatother
+
+
+%数式番号を節毎に分けてリセットする
+\def\theequation{\thesection.\arabic{equation}}
+  \makeatletter
+  \@addtoreset{equation}{section}
+  \makeatother
+%図番号を節毎に分けてリセットする
+\makeatletter
+ \renewcommand{\thefigure}{%
+   \thesection.\arabic{figure}}
+  \@addtoreset{figure}{section}
+\makeatother
+%表番号を節毎に分けてリセットする
+\makeatletter
+ \renewcommand{\thetable}{%
+   \thesection.\arabic{table}}
+  \@addtoreset{table}{section}
+\makeatother
+
+\newcommand{\performanceevaluation}[2]{
+\begin{figure}[H]
+\centering
+\begin{tabular}{ccc}
+  \begin{minipage}[b]{.33\textwidth}
+    \centering
+    \includegraphics[width=0.75\linewidth]{data/out/Precision/#1.png}
+    \subcaption{適合率}\label{#1 presicion}
+  \end{minipage}
+\begin{minipage}[b]{.33\textwidth}
+  \centering
+  \includegraphics[width=0.75\linewidth]{data/out/Recall/#1.png}
+  \subcaption{再現率}\label{#1 Recall}
+\end{minipage}
+\begin{minipage}[b]{.33\textwidth}
+  \centering
+  \includegraphics[width=0.75\linewidth]{data/out/Label/#1.png}
+  \subcaption{正解ラベルと予想ラベル対応}\label{#1 label}
+\end{minipage}
+\end{tabular}
+\caption{#2 特性}\label{#2 tokusei}
+\end{figure}
+}
+
+%A4: 21.0 x 29.7cm
+\begin{document}
+
+\thispagestyle{empty}
+\begin{center}
+\vspace*{40mm} 
+{\huge\noindent 令和5年度 卒業論文}\\
+\vspace{40mm}
+{\Huge\noindent 機械学習を用いた音楽のジャンル分類}\\
+\vspace{60mm} 
+\begin{table}[h]
+  \centering
+   \begin{tabular}{lr}
+    \Large 学籍番号 & \Large 15160 \\
+    \Large 氏名 & \Large 井上晃志\\
+    \Large 所属学科 & \Large 制御情報工学科\\
+    \Large 指導教員 & \Large 内堀晃彦 \\
+    \Large 日付 & \Large \today \\
+   \end{tabular}
+\end{table}
+\end{center}
+
+\clearpage
+\setcounter{page}{1}
+\tableofcontents
+
+\clearpage
+\section{緒言}\label{introduction}
+\subsection{背景}
+近年、サブスクリプションシステムをはじめとするインターネットの発展により、
+私たちの音楽への関わり方は大きく変化し、少数の曲を繰り返し聴く方向から大量の曲を聞き流す方向へと変化した。
+この変化によって音楽提供システムによる「聴いたことのある曲から別の曲を探し、おすすめする機能」がより重要になった。
+このおすすめ機能の実現のためには曲の類似度を調べることが重要であり、ジャンル分類の重要性が上がっている。
+現在はおすすめ機能の実現のためにレコメンド機能、自然言語処理、音楽分析等による解決が図られている\cite{tech_spotify}。
+この内、レコメンド機能や自然言語処理は音楽に対して、作曲者や流れていたドラマ等、特定のメタデータに引っ張られる可能性があり、
+また、最新曲等のデータが少ない場合に弱い。
+そこで、純粋な音楽データに着目して分析を行うことで課題の解決を図った。
+
+\subsection{目的}
+自分の好みとする曲を探し出すシステムを作成することを目標に、その一つの解決策として曲の方向性を限るためにジャンル分類を行う。
+そこで、本研究では音楽データから複数の特徴を抽出しジャンル分類を行う分類器の作成を目的とする。
+
+\subsection{研究方針}
+本研究では楽曲データに対するジャンルを正解ラベルとするデータセットをもとに
+各曲の特徴を抽出。各特徴に対して機械学習を行い、その特性を検証する。
+その後、複数モデルを用いてジャンル分類の精度向上を図る。
+
+\subsection{論文の構成}
+本論文の構成を以下に記す。\\
+第\ref{machine learning}章：本研究で使用した機械学習の手法について述べる\\
+第\ref{sound feature}章：本研究で使用した音データからの特徴抽出手法について述べる\\
+第\ref{experiment feature}章：各特徴毎の特性の検証を行う\\
+第\ref{experiment ensemble}章：複数特徴・モデルを用いたジャンル分類の精度検証を行う\\
+第\ref{conclusion}章：本研究の総括を行う
+
+
+\clearpage
+\section{機械学習について}\label{machine learning}
+機械学習とは、データをコンピュータが学習し、その背後にあるパターンを発見するものである。
+
+\subsection{ニューラルネットワーク}
+機械学習に用いられる構造にはニューラルネットワークがある。
+これは、人間の脳内にある神経細胞とそのつながりを再現した構造であり、入力層、中間層、出力層の3層で構成されている。
+中間層を増やすことでより複雑な分析を行うことができ、中間層が3層以上のものを深層学習と呼ぶ。
+各層にはノードとノード間をつなぐ重み、バイアスが存在する。ノードには活性化関数と呼ばれる関数によって、入力された値に応じて出力が制御される。
+図\ref{Dence}に全結合型と呼ばれるニューラルネットワークの簡単な構造を示す。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/NN_Dence.drawio.png}
+\figcaption{ニューラルネットワーク 構造}\label{Dence}
+\end{center}
+\end{figure}
+
+
+\subsection{ニューラルネットワークにおける順伝播}
+ニューラルネットワークにおいて入力された値から出力するまでに以下のプロセスを踏む。
+入力された値は次の層(中間層)へ重み行列を乗じて進む。また、この際にバイアスが追加される。
+各層では活性化関数をかけられ、その結果の値を次の層への入力として用いる。
+すなわち、以下のように数式で表すことができる。
+入力ベクトルを要素数を$n$として$
+  \bm{x}=
+        x_1 \cdots x_i  \cdots x_n
+$第l層における
+重み行列(第1層は入力層と中間層第1層を接続する重み)は
+接続元のノード数を$h$,接続先のノード数$v$をとして
+\begin{equation*}
+  \bm{W}^l =
+      \begin{pmatrix}
+      w_{1 1}^l & \cdots & w_{1 i}^l & \cdots & w_{1 v}^l\\
+      \vdots    & \ddots &           &        & \vdots   \\
+      w_{j 1}^l & \cdots & w_{j i}^l & \cdots & w_{j v}^l\\
+      \vdots    &        &           & \ddots & \vdots   \\
+      w_{h 1}^l & \cdots & w_{h i}^l & \cdots & w_{h v}^l\\
+      \end{pmatrix}
+\end{equation*}
+また第l層におけるバイアスはノード数を$n$として$\bm{b}^l=(b_1^l \cdots b_i^l \cdots b_n^l)$
+活性化関数を適応する前の中間層の$l$層に入力された値をその層のノード数を$n$として
+$
+  \bm{u}^l=
+      \begin{pmatrix}
+        u_1^l & \cdots & u_i^l & \cdots u_n^l
+      \end{pmatrix}
+$
+層$l$における活性化関数を$\bm{f}^l(\bm{x})$
+活性化関数を適応した後の中間層のl層の値をその層のノード数を$n$として
+$
+  \bm{h}^l=
+        (h_1^l \cdots h_i^l \cdots h_n^l)
+$
+出力層の最終的な出力をその要素数を$n$として
+$
+\bm{y}^l=
+       (y_1^l \cdots y_i^l \cdots y_n^l)
+$
+で表すと、
+ニューラルネットワークの処理は出力層を第$n$層とすると以下のように示せる。
+  \begin{align}
+    & \bm{u}^1=\bm{x} \bm{W}^1 + \bm{b}^1\\
+    & \bm{h}^i=\bm{f}^i(\bm{u}^i)\\
+    & \bm{u}^{i+1}=\bm{h} \bm{W}^{i+1} + \bm{b}^{i+1}\\
+    & \bm{y}=\bm{f}^n(\bm{u}^n)
+\end{align}
+\subsection{ニューラルネットワークにおける逆伝播}
+順伝搬によって出力された結果は誤差関数によって正解の値とのズレ(損失)を計算する。
+最終的には誤差関数が最小となるように重みを設定することが目的であるため、
+ニューラルネットワークでは誤差関数が小さくなる方向に重みを寄せることで逐次的に解を探索する手法を取っている。
+正解の値を要素数を$n$として
+$
+  \bm{t}=
+    (t_1 \cdots t_i  \cdots t_n)
+$
+誤差関数を$E(\bm{y},\bm{t})$とすると、ある特定の重みにおける勾配は式\ref{grad}で、重みの更新は式\ref{weight update}で表される。ここで$\eta$は学習率であり、更新の大きさに影響する。
+\begin{eqnarray}
+  \frac{\partial E}{\partial w_{i j}^l}\\ \label{grad}
+  {w_{i j}^l}' =  w_{i j}^l - \eta \frac{\partial E}{\partial w_{i j}^l} \label{weight update}
+\end{eqnarray}
+この計算を単純に行うと計算が膨大となるため、より効率的な手法として誤差逆伝播法\cite{back ref}が用いられる。
+中間層において後の層が計算済みであった場合、誤差関数の全微分は式\ref{all delta}で表されるため、層lにおける誤差関数の偏微分は式\ref{ddelta}になり、これを連鎖律という。
+\begin{equation}
+  dE = \sum_{i=1}^{n} \frac{\partial E}{\partial u_i^{l+1}}\partial u_i^{l+1}\\ \label{all delta}
+\end{equation}
+  \begin{align}
+  \frac{\partial E}{\partial h_k^l} &= \sum_{i=1}^{n} \frac{\partial E}{\partial u_i^{l+1}}\frac{\partial u_i^{l+1}}{\partial h_k^l}\\ \label{ddelta}
+  &= \sum_{i=1}^{n} \frac{\partial E}{\partial u_i^{l+1}}W_{k i}^l \\ \label{matome}
+  \frac{\partial E}{\partial u_k^l} &= \frac{\partial E}{\partial h_k^l}\frac{ dh_k^l}{du_k^l}
+  \end{align}
+ここで式\ref{matome}は行列を用いて以下のようにまとめて表せる。
+\begin{equation}
+  \begin{pmatrix}
+    \frac{\partial E}{\partial h_1^l}& \cdots & \frac{\partial E}{\partial h_i^l} & \cdots \frac{\partial E}{\partial h_n^l}
+  \end{pmatrix}=
+  \begin{pmatrix}
+    \frac{\partial E}{\partial u_1^{l+1}} & \cdots & \frac{\partial E}{\partial u_i^{l+1}} & \cdots \frac{\partial E}{\partial u_m^{l+1}}
+  \end{pmatrix}
+  (W^l)^t
+\end{equation}
+また、求めたい特定の重みにおける勾配は合成関数の微分を用いて、式\ref{fin}となる。
+  \begin{align}
+  \begin{split}
+  \frac{\partial E}{\partial w_{i j}^l} &= \frac{\partial E}{\partial u_j^l}\frac{\partial u_j^l}{\partial w_{i j}^l} \\
+  &=\frac{\partial E}{\partial u_j^l}h_i^{l-1}
+\end{split}\\ \label{fin}
+\end{align}
+以上の事から誤差を出力層から入力層へさかのぼるように伝達し、その後に重みを更新することでより効率的に行う事ができる。
+
+
+\subsection{CNN(畳み込みニューラルネットワーク)}
+ニューラルネットワークを拡張させたものに畳み込みニューラルネットワーク(Convolutional Neural Network:CNN)がある\cite{cnn ref}。
+これは人間の視覚を基にして作成されたモデルであり、フィルタを用いることでデータの特徴を抽出する畳み込み層と
+一定範囲に対して処理を行うことで特徴を保持したままサイズを圧縮するプーリング層からなる。
+図\ref{CNN}にCNNの構造を示す。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=10cm]{data/CNN.png}
+\figcaption{CNN 構造}\label{CNN}
+\end{center}
+\end{figure}
+\subsubsection{畳み込み層}
+畳み込み層はデータの特徴を抽出する際に用いられる層であり、重みであるフィルタをデータに対してずらしながらかけることで局所的な特徴を量として求める。
+畳み込みを行う際、入力データに対してそのまま畳み込むと出力サイズはフィルタのサイズによって縮小される。
+よって、通常は入出力間でデータサイズが変化しないように入力データの周囲に0を入れる処理(ゼロパディング)が行われる。
+また、ユーザはフィルタのサイズと数、一度にずらす量(ストライド)を設定する必要がある。
+図\ref{CNN}に示す畳み込み層は入力4×4、フィルタサイズ3×3、フィルタ数4、ストライド1×1である。
+
+\subsubsection{プーリング層}
+プーリング層は特定範囲でのデータの代表値を求めることでデータの概形を保った状態でデータの抽象度を上げる層である。入力データが少しずれているだけでもコンピュータにとっては大きく異なるものとして取り扱われるが、
+プーリング層を使用することでその影響を抑えることができる。
+プーリング層には特定範囲の値の平均値を出力する平均プーリングや特定範囲の最大値を出力する最大プーリング等が使用される。
+図\ref{CNN}に示すプーリング層は範囲2×2、ストライド2×2の最大プーリングである。
+
+
+\subsection{RNN(再帰型ニューラルネットワーク)}
+ニューラルネットワークを拡張させたものに再帰型ニューラルネットワーク(Recurrent Neural Network:RNN)がある\cite{rnn ref}。
+これは時間的に前の層の出力が次の層に影響を及ぼす構造を持ったニューラルネットワークであり、
+これにより可変的な時系列データに対応することや、順序を持ったデータに対応することができる。
+
+図\ref{RNN}にRNNの構造を示す。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/RNN.png}
+\figcaption{RNN 構造}\label{RNN}
+\end{center}
+\end{figure}
+RNNには勾配の逆伝搬時に勾配を複数回乗じる影響で長時間を取り扱う際に勾配が0に近くなる勾配消失問題が生じる。
+その問題の解決のために次項のLSTMが考案された。
+
+\subsection{LSTM(長・短期記憶)}
+RNNを改良したものに長・短期記憶(Long Short Term Memory:LSTM)がある\cite{lstm ref}。
+LSTMは忘却ゲート、入力ゲート、出力ゲートの3つのゲートで構成され、忘却ゲートによって前の情報の取捨の選択、入力ゲートで情報の更新、出力ゲートで情報の送信の決定を行う。
+図\ref{LSTM}にLSTMの構造を示す。この構造はあくまで一般的なものであり、覗き穴LSTM等、別の構造を持ったLSTMも存在する。
+LSTMは文章生成や大規模音声認識、テキスト読み上げ、キャプション生成に用いられている。
+\begin{figure}[H]
+  \begin{center}
+  \includegraphics[width=12cm]{data/LSTM.png}
+  \figcaption{LSTM 構造}\label{LSTM}
+  \end{center}
+  \end{figure}
+\clearpage
+\section{音楽の特徴について}\label{sound feature}
+音の3要素はリズム・メロディ・ハーモニーである。こういった要素をコンピュータで処理するためには音楽にどのように周波数成分が分布しているか、
+また、どのように時間に従って変化しているかに注目することが重要であると考えられる。
+以下に自分が調査をした特徴抽出法\cite{sound param}について述べる。また、今回はGTZAN\cite{GTZAN}からblues.00000.wavを用い、特徴抽出にはpythonライブラリであるlibrosa\cite{librosa}を用いた。
+\subsection{STFT(短時間フーリエ変換)}
+短時間フーリエ変換(Short Time Fourier Transform:STFT)は入力に対して窓関数をずらしながらかけ、フーリエ変換を行うことで周波数成分の時間変化を求める処理である。
+変換式は(\ref{STFT})で与えられ、曲の変換結果を図\ref{STFT res}に示す。
+ここでf[x]は入力波形、w[x]は窓関数、hはフーリエ変換の移動範囲である。
+\begin{equation}
+  X[n][k] = \sum_{j=k h-\lfloor N-1 \rfloor}^{j=k h-\lfloor N-1 \rfloor} f[j] w[j-k h-\lfloor N-1 \rfloor] e^{-i \frac{2\pi n}{N} (j-k h-\lfloor N-1 \rfloor)}  \label{STFT}
+\end{equation}
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/STFT.png}
+\figcaption{STFT 変換結果}\label{STFT res}
+\end{center}
+\end{figure}
+
+\subsection{melspectrogram}
+STFTされたデータに対して周波数軸をメル尺度にしたスペクトログラム、すなわち、スペクトルにメルフィルタバンクをかけたものである。低周波帯の変動に対して敏感で高周波帯の変動に対して鈍感である特徴を持つ。
+機械学習においてよく用いられる。
+曲の変換結果を図\ref{mel res}に示す。
+
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/melspectrogram.png}
+\figcaption{メルスペクトログラム 変換結果}\label{mel res}
+\end{center}
+\end{figure}
+
+\subsection{MFCC}
+melspectrogramに対して離散コサイン変換を適用した後、低次係数を抽出したものであり、音声研究においてよく用いられる。
+曲の変換結果を図\ref{MFCC res}に示す。またこの際、低次係数は20まで取得した。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/MFCC.png}
+\figcaption{MFCC 変換結果}\label{MFCC res}
+\end{center}
+\end{figure}
+
+\subsection{CQT}
+フーリエ変換では一定幅の周波数成分が取得できるが、音の高さは対数的な特徴であるため、音楽の解析を行う際には低周波成分の分解能が悪く、高周波成分の分解能が過剰である点が欠点である。
+それを解決するために、取得したい周波数に対応してその波数が一定となるように窓関数の幅を調整することで対応する。
+これを定Q変換(Constant-Q Transform:CQT)という。
+式は(\ref{CQT})で与えられ、曲の変換結果を図\ref{CQT res}に示す。
+ここでQは任意に設定する値、$a_k^*$は$a_k$の共役複素数である\cite{cqt calc}。
+\begin{eqnarray}
+  &&X[k][n] = \sum_{j=n-\lfloor N_k/2 \rfloor}^{j=n+\lfloor N_k/2 \rfloor} x[j] a_k^*(j-n+N_k/2) \label{CQT}\\
+  &&N_k=\frac{f_s}{f_k} Q \\
+  &&a_k(n)=\frac{1}{N_k}w(\frac{n}{N_k})\exp[\frac{-i 2\pi n Q}{N_k}]
+\end{eqnarray}
+この数式を実際に処理する場合にはパーセバル定理を用いることでFFTの積の総和に変形し、
+その際、$a_k^*$のFFT変換は事前計算可能なスパース行列(疎行列)となることによって、計算量を落としている。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/CQT.png}
+\figcaption{CQT 変換結果}\label{CQT res}
+\end{center}
+\end{figure}
+
+\subsection{RMS}
+二乗平均平方根(Root Means Square:RMS)は音圧を算出する方法であり、特定時間の周辺のサンプルの二乗平均平方根を求める。
+曲の盛り上がり具合を判別する方法として使用される。
+式は\label{RMS calc}で与えられ、曲の変換結果を図\ref{RMS res}に示す。
+\begin{equation}
+  RMS[n]=\sqrt{\frac{1}{N}\sum_{j=hn-\lfloor N/2 \rfloor}^{j=hn+ \lfloor N/2 \rfloor} x[j]^2} \label{RMS calc}
+\end{equation}
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/RMS.png}
+\figcaption{RMS 変換結果}\label{RMS res}
+\end{center}
+\end{figure}
+
+\subsection{Spectral Bandwidth}
+Spectral Bandwidthはスペクトル重心からの距離とそのパワーを考慮した特徴であり、分布の広がり、音楽の迫力に対応している。
+曲の変換結果を図\ref{spec Bandwidth res}に示す。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/spectral_bandwidth.png}
+\figcaption{spectral bandwidth 変換結果}\label{spec Bandwidth res}
+\end{center}
+\end{figure}
+
+\subsection{spectral centroid}
+spectral centroidは時間軸におけるスペクトル重心である。
+スペクトル重心は低い/高いほどその時刻の周波数が低く/高いことを示し、音の明るさを表す指標である。
+曲の変換結果を図\ref{spec centroid res}に示す。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/spectral_centroid.png}
+\figcaption{spectral centroid 変換結果}\label{spec centroid res}
+\end{center}
+\end{figure}
+
+\subsection{spectral contrast}
+spectral contrastはスペクトルを周波数に沿って6つのサブバンドに分け、それぞれのバンドにおけるコントラストを表す。
+コントラストは上位四分位の平均エネルギーと下位四分位の平均エネルギーの比較で求められる。
+曲の変換結果を図\ref{spec contrast res}に示す。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/spectral_contrast.png}
+\figcaption{spectral contrast 変換結果}\label{spec contrast res}
+\end{center}
+\end{figure}
+
+\subsection{spectral flatness}
+spectral flatnessはパワースペクトルの平坦度を表す指標である。パワースペクトルをサブバンドで分割し、全サブバンドの相乗平均を相加平均で除算することで求められる。
+ホワイトノイズ等の場合には1に近づき、1に近いほど平坦である。
+曲の変換結果を図\ref{spec flat res}に示す。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/spectral_flatenss.png}
+\figcaption{spectral flatness 変換結果}\label{spec flat res}
+\end{center}
+\end{figure}
+
+\subsection{spectral rolloff}
+パワースペクトルのエネルギーが低周波数帯域から全体の85\%に達する地点を表し、
+曲の明るさや落ち着きに関係する。
+曲の変換結果を図\ref{rolloff res}に示す。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/spectral_rolloff.png}
+\figcaption{spectral rolloff 変換結果}\label{rolloff res}
+\end{center}
+\end{figure}
+
+\subsection{zero crossing rate}
+時間軸におけるその周辺の一定範囲での振幅の正負の切り替わり回数である。音響信号に含まれるノイズの量を表す指標として用いられる。
+曲の変換結果を図\ref{zero crossing rate res}に示す。 
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/spectral_zero_crossing_rate.png}
+\figcaption{zero crossing rate 変換結果}\label{zero crossing rate res}
+\end{center}
+\end{figure}
+
+\subsection{chromagram}
+時間軸において、周波数成分から12音階におけるパワーを算出したものであり、12音階のどの音階がなっているかを表す。
+曲の変換結果を図\ref{chromagram res}に示す。今回の実験ではCQTをベースにクロマグラムを作成した。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/chromagram.png}
+\figcaption{chromagram 変換結果}\label{chromagram res}
+\end{center}
+\end{figure}
+
+\subsection{Tonnetz}
+Tonnetz(tone network)は6つの和音[Fifth x-axis, Fifth y-axis, Minor x-axis, Minor y-axis, Major x-axis, Major y-axis]との各時間軸での適合度を計算するものであり、
+音楽の和音構造の分析に用いられる。
+曲の変換結果を図\ref{Tonnetz res}に示す。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/Tonnetz.png}
+\figcaption{Tonnetz 変換結果}\label{Tonnetz res}
+\end{center}
+\end{figure}
+
+\subsection{自己相関テンポグラム}
+自己相関テンポグラムは自己相関関数を用いて曲の時間軸におけるテンポを算出したものであり、
+BPMの推定に用いられる。
+曲の変換結果を図\ref{auto tempo res}に示す。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/autocorrelation_tempogram.png}
+\figcaption{autocorrelation tempogram 変換結果}\label{auto tempo res}
+\end{center}
+\end{figure}
+
+\subsection{フーリエテンポグラム}
+フーリエテンポグラムはSTFTを用いて曲の時間軸におけるテンポを算出したものであり、
+自己相関テンポグラムと同様にBPM分析に用いられる。
+曲の変換結果を図\ref{fourier tempo res}に示す。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=7cm]{data/fourier_tempogram.png}
+\figcaption{fourier tempogram 変換結果}\label{fourier tempo res}
+\end{center}
+\end{figure}
+
+\subsection{hpss}
+HPSS(Harmonic/Percussive Sound Separation)は音楽データに含まれる調波音(音色を構成する音)と打楽器音を分離する手法である。
+今回の特徴抽出では分離した後、それぞれにCQT、melspectrogramの変換を施し、それを特徴とした。
+曲の変換結果をそれぞれ図\ref{hpss h CQT res}・\ref{hpss p CQT res}、図\ref{hpss h CQT res}・\ref{hpss p mel res}に示す。
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{cc}
+  \begin{minipage}{.5\textwidth}
+      \centering
+      \includegraphics[width=7cm]{data/hpss_harmonic_CQT.png}
+\figcaption{hpss harmonic CQT 変換結果}\label{hpss h CQT res}
+  \end{minipage}
+  \begin{minipage}{.5\textwidth}
+      \centering
+      \includegraphics[width=7cm]{data/hpss_percussive_CQT.png}
+      \figcaption{hpss percussive CQT 変換結果}\label{hpss p CQT res}
+  \end{minipage}
+\end{tabular}
+\end{figure}
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{cc}
+  \begin{minipage}{.5\textwidth}
+      \centering
+      \includegraphics[width=7cm]{data/hpps_harmonic_melspectrogram.png}
+      \figcaption{hpss harmonic melspectrogram 変換結果}\label{hpss h mel res}
+  \end{minipage}
+  \begin{minipage}{.5\textwidth}
+      \centering
+
+      \includegraphics[width=7cm]{data/hpss_percussive_melspectrogram.png}
+      \figcaption{hpss percussive melspectrogram 変換結果}\label{hpss p mel res}
+  \end{minipage}
+\end{tabular}
+\end{figure}
+
+
+
+\clearpage
+\section{音楽の特徴に対するジャンル特性}\label{experiment feature}
+第\ref{sound feature}章で述べた各特徴に対して簡単なCNNモデルとLSTMモデルを作成し、その分類精度について検証した。
+また、その際、学習にはデータセットの7割を使用し、残りの3割を予測し、正解ラベルと予想ラベルの対応を記録することで評価した。
+
+\subsection{特性}
+6章に用いた上位5個について用いたモデルとその特性を述べる。
+また、その他の特徴については付録に示す。
+\subsubsection{CQT CNN}
+音楽の特徴としてCQTを用い、また、機械学習のモデルとしてCNNを用いた。
+モデルの構造は表\ref{CQTmodel}に示す。
+また、その特性を図\ref{CQT CNN tokusei}に示す。
+図\ref{CQT CNN tokusei}から、classicalの正解率が高く、全体の精度は67\%であることが分かり、これは作成したモデルの中で最も高かった。一方でpopとrockの適合率が低く約40\%である。また、rockは再現率も低く、特にjazzとpopが多くrockと誤判定されている。
+反対にrockはdiscoとmetalに判定される数が多い。
+\begin{table}[h]
+  \centering
+  \caption{CQT CNN model}\label{CQTmodel}
+\begin{tabular}{lll} \hline
+  Layer (type) & Output Shape & Param \\ \hline\hline
+  conv2d\_27 (Conv2D) & (None, 96, 300, 32) & 832 \\
+  dropout\_87 (Dropout)    &    (None, 96, 300, 32)   &    0         \\
+  max\_pooling2d\_27 (MaxPooling2D)  & (None, 48, 150, 32)  &    0         \\
+  conv2d\_28 (Conv2D)    &      (None, 48, 150, 64)   &    18496     \\
+  dropout\_88 (Dropout)    &    (None, 48, 150, 64)    &   0         \\
+  max\_pooling2d\_28 (MaxPooling2D) &  (None, 24, 75, 64)   &    0         \\
+  conv2d\_29 (Conv2D)     &     (None, 24, 75, 128)   &    73856     \\
+  dropout\_89 (Dropout)    &    (None, 24, 75, 128)   &    0         \\
+  max\_pooling2d\_29 (MaxPooling2D) & (None, 12, 37, 128)  &    0         \\
+  global\_average\_pooling2d\_9(GlobalAveragePooling2D)  & (None, 128)       &       0         \\
+  dense\_30 (Dense)      &      (None, 512)         &      66048   \\  
+  dense\_31 (Dense)     &       (None, 10)         &       5130  \\ \hline\hline 
+  Total params: 164,362\\
+  Trainable params: 164,362\\
+  Non-trainable params: 0\\ \hline
+\end{tabular}
+\end{table}
+\performanceevaluation{CQT6}{CQT CNN}
+
+\subsubsection{hpss harmonic CQT CNN}
+HPSSを行ったもののうち調波音をCQT変換したものを入力とし、モデルとしてCNNを使用した。
+モデルの構造は表\ref{hpss harmonic model}に示す。
+また、その特性を図\ref{hpss harmonic CQT CNN tokusei}に示す。\\
+図\ref{hpss harmonic CQT CNN tokusei}から、classicalの適合率・再現率ともに高く、また、metalは適合率は低いものの、再現率では100\%を達成していることが分かる。
+一方、disco、rockの適合率が極端に低く、再現率はclassicalとmetalを除いて全体的に低い。disco,rockともに誤判定されるジャンルが広く、精度は約57.3\%である。
+\begin{table}[h]
+  \centering
+  \caption{hpss harmonic CQT CNN model}\label{hpss harmonic model}
+\begin{tabular}{lll} \hline
+  Layer (type)       &         Output Shape        &      Param     \\ \hline\hline
+   conv2d\_45 (Conv2D)    &      (None, 96, 300, 32)   &    832      \\  
+   max\_pooling2d\_44 (MaxPooling2D) & (None, 48, 150, 32)   &   0    \\      
+   dropout\_55 (Dropout)   &     (None, 48, 150, 32)   &    0        \\  
+   conv2d\_46 (Conv2D)     &     (None, 48, 150, 32)  &     9248     \\  
+   max\_pooling2d\_45 (MaxPooling2D) & (None, 24, 75, 32)   &    0    \\      
+   dropout\_56 (Dropout)   &     (None, 24, 75, 32)   &     0        \\  
+   conv2d\_47 (Conv2D)     &     (None, 24, 75, 64)   &     18496    \\  
+   max\_pooling2d\_46 (MaxPooling2D) & (None, 12, 37, 64)   &    0    \\      
+   dropout\_57 (Dropout)   &     (None, 12, 37, 64)    &   0        \\  
+   conv2d\_48 (Conv2D)     &     (None, 12, 37, 64)    &    36928    \\  
+   max\_pooling2d\_47 (MaxPooling2D) & (None, 3, 9, 64)   &      0    \\                                                                
+   dropout\_58 (Dropout)    &    (None, 3, 9, 64)    &      0        \\  
+   flatten\_24 (Flatten)   &     (None, 1728)       &      0        \\  
+   dense\_24 (Dense)       &     (None, 10)        &        17290    \\  \hline\hline
+  Total params: 82,794 \\
+  Trainable params: 82,794 \\
+  Non-trainable params: 0 \\ \hline
+\end{tabular}
+\end{table}
+\performanceevaluation{hpss_harmonic_CQT}{hpss harmonic CQT CNN}
+
+\subsubsection{hpss percussive melspectrogram CNN}
+HPSSを行ったもののうち打楽器音をmelspectrogramにかけたものを入力とし、モデルとしてCNNを使用した。
+モデルの構造は表\ref{hpss percussive model}に示す。
+また、その特性を図\ref{hpss harmonic CQT CNN tokusei}に示す。\\
+図\ref{hpss harmonic CQT CNN tokusei}から、classicalの適合率が高く、今回作成したモデルの中で最も高い正解数である一方、再現率は高いとは言えず、他のジャンルの誤判定を招いていることが分かる。
+また、適合率においてrockが極端に低く、誤判定されるジャンルが広い。精度は約56\%であった。
+\begin{table}[h]
+  \centering
+  \caption{hpss percussive melspectrogram CNN model}\label{hpss percussive model}
+\begin{tabular}{lll} \hline
+  Layer (type)            &     Output Shape            &   Param    \\ \hline\hline
+  conv2d\_65 (Conv2D)     &     (None, 128, 300, 32)    &   832      \\ 
+  max\_pooling2d\_64 (MaxPooling2D) &  (None, 64, 150, 32)    &   0        \\ 
+  dropout\_75 (Dropout)   &      (None, 64, 150, 32)    &    0        \\ 
+  conv2d\_66 (Conv2D)     &      (None, 64, 150, 32)    &    9248     \\ 
+  max\_pooling2d\_65 (MaxPooling2D)  & (None, 32, 75, 32)    &    0        \\ 
+  dropout\_76 (Dropout)   &      (None, 32, 75, 32)     &    0        \\ 
+  conv2d\_67 (Conv2D)     &      (None, 32, 75, 64)    &     18496    \\ 
+  max\_pooling2d\_66 (MaxPooling2D)  (None, 16, 37, 64)    &    0        \\ 
+  dropout\_77 (Dropout)    &     (None, 16, 37, 64)    &     0        \\ 
+  conv2d\_68 (Conv2D)      &     (None, 16, 37, 64)   &      36928    \\ 
+  max\_pooling2d\_67 (MaxPooling2D)  & (None, 4, 9, 64)   &       0        \\ 
+  dropout\_78 (Dropout)    &     (None, 4, 9, 64)     &      0        \\ 
+  flatten\_29 (Flatten)    &     (None, 2304)        &      0        \\ 
+  dense\_29 (Dense)      &       (None, 10)          &       23050    \\ \hline\hline
+ Total params: 88,554 \\
+ Trainable params: 88,554 \\
+ Non-trainable params: 0 \\ \hline
+\end{tabular}
+\end{table}
+\performanceevaluation{hpss_percussive_melspectrogram}{hpss percussive melspectrogram CNN}
+\subsubsection{melspectrogram CNN}
+音楽データからmelspectrogramに変換したものを入力とし、モデルとしてCNNを使用した。
+モデルの構造は表\ref{melspectrogram model}に示す。
+その特性を図\ref{melspectrogram CNN tokusei}に示す。\\
+図\ref{melspectrogram CNN tokusei}からclassical,hiphop,metalは適合率・再現率ともに高く優れていることが分かる。
+一方で、countryは正常に判断されたものよりもrockと判断された数のほうが多い点やrockと予測された数が多い点が問題である。
+また、精度は約64.7\%であった。
+\begin{table}[h]
+  \centering
+  \caption{melspectrogram CNN model}\label{melspectrogram model}
+\begin{tabular}{lll} \hline
+  Layer (type)            &     Output Shape            &   Param    \\ \hline\hline
+  conv2d\_65 (Conv2D)     &     (None, 128, 300, 32)    &   832      \\ 
+  max\_pooling2d\_64 (MaxPooling2D) &  (None, 64, 150, 32)    &   0        \\ 
+  dropout\_75 (Dropout)   &      (None, 64, 150, 32)    &    0        \\ 
+  conv2d\_66 (Conv2D)     &      (None, 64, 150, 32)    &    9248     \\ 
+  max\_pooling2d\_65 (MaxPooling2D)  & (None, 32, 75, 32)    &    0        \\ 
+  dropout\_76 (Dropout)   &      (None, 32, 75, 32)     &    0        \\ 
+  conv2d\_67 (Conv2D)     &      (None, 32, 75, 64)    &     18496    \\ 
+  max\_pooling2d\_66 (MaxPooling2D)  (None, 16, 37, 64)    &    0        \\ 
+  dropout\_77 (Dropout)    &     (None, 16, 37, 64)    &     0        \\ 
+  conv2d\_68 (Conv2D)      &     (None, 16, 37, 64)   &      36928    \\ 
+  max\_pooling2d\_67 (MaxPooling2D)  & (None, 4, 9, 64)   &       0        \\ 
+  dropout\_78 (Dropout)    &     (None, 4, 9, 64)     &      0        \\ 
+  flatten\_29 (Flatten)    &     (None, 2304)        &      0        \\ 
+  dense\_29 (Dense)      &       (None, 10)          &       23050    \\ \hline\hline
+ Total params: 88,554 \\
+ Trainable params: 88,554 \\
+ Non-trainable params: 0 \\ \hline
+\end{tabular}
+\end{table}
+\performanceevaluation{melspectrogram}{melspectrogram CNN}
+
+\subsubsection{MFCC CNN}
+音楽データからMFCCを求め、それを入力とした。またモデルとしてはCNNを使用した。
+モデルの構造は表\ref{MFCC CNN model}に示す。
+その特性を図\ref{MFCC CNN tokusei}に示す。\\
+図\ref{MFCC CNN tokusei}からclassicalの適合率・再現率は優れている一方、精度は約55.7\%と低いことが分かる。
+ジャンルごとの誤判定も広く、特にblues,rockに誤判定される数が非常に多い。
+\begin{table}[h]
+  \centering
+  \caption{MFCC CNN model}\label{MFCC CNN model}
+\begin{tabular}{lll} \hline
+  Layer (type)       &         Output Shape         &    Param   \\ \hline\hline
+  conv2d\_188 (Conv2D)     &    (None, 20, 300, 32)    &   832     \\  
+  max\_pooling2d\_173 (MaxPooling2D) & (None, 10, 150, 32)   &   0  \\   
+ dropout\_309 (Dropout)   &    (None, 10, 150, 32)   &    0        \\ 
+ conv2d\_189 (Conv2D)     &    (None, 10, 150, 64)   &    18496    \\ 
+ dropout\_310 (Dropout)   &    (None, 10, 150, 64)   &    0        \\ 
+ conv2d\_190 (Conv2D)    &     (None, 10, 150, 64)   &    36928    \\ 
+ max\_pooling2d\_174 (MaxPooling2D) & (None, 5, 75, 64)    &    0   \\      
+ dropout\_311 (Dropout)   &    (None, 5, 75, 64)    &     0        \\ 
+ conv2d\_191 (Conv2D)    &     (None, 5, 75, 128)   &     73856    \\ 
+ max\_pooling2d\_175 (MaxPooling2D) & (None, 2, 37, 128)   &    0   \\      
+ dropout\_312 (Dropout)   &    (None, 2, 37, 128)    &    0        \\ 
+ flatten\_63 (Flatten)    &    (None, 9472)      &       0        \\ 
+ dense\_84 (Dense)       &     (None, 10)       &         94730    \\ \hline\hline
+Total params: 224,842 \\
+Trainable params: 224,842 \\
+Non-trainable params: 0 \\ \hline
+\end{tabular}
+\end{table}
+\performanceevaluation{MFCC_CNN}{MFCC CNN}
+
+
+
+\clearpage
+\section{複数モデルを用いたジャンル分類精度向上}\label{experiment ensemble}
+\subsection{アンサンブル学習}
+アンサンブル学習は弱学習器を複数用いることで精度を上げる手法であり、バギング、ブースティング、スタッキング等の手法がある\cite{ensemble ref}。
+バギングは入力するデータから学習データをいくつか抽出し、異なる学習データを用いて各学習器の学習を行う事で精度を高める手法である。
+ブースティングは学習器を重ね合わせることでご分類のデータに対して重みをつけて学習させ、最終的な予測の精度を上げる手法である。
+スタッキングは第一段階で様々なアルゴリズムで学習を行い、その出力を入力とするモデル(メタモデル)の学習を行うことで正解率の高いモデルを重視するなどで精度を上げる手法である。
+アンサンブル学習は金融分野での予測モデルや疾患予測に用いられている。
+\subsection{実験}
+本実験では図\ref{ensemble experiment}に示すように各特徴量についてモデルを作成し、統合する形でアンサンブル学習を行った。
+ここで、集計関数として、全モデルの出力値の平均を取る手法と全モデルの予想ラベルの多数決を取る手法の2つを実験した。
+\begin{figure}[H]
+\begin{center}
+\includegraphics[width=14cm]{data/アンサンブル.drawio.png}
+\figcaption{アンサンブル学習 実験構成}\label{ensemble experiment}      
+\end{center}
+\end{figure}
+  
+\subsection{特性}
+集計関数に出力の平均をとる手法を採用したときの特性を図\ref{ensemble soft tokusei}に示す。
+\performanceevaluation{ensemble_soft}{ensemble 平均} \label{ensemble soft tokusei}
+また、集計関数に予想ラベルの多数決をとる手法を採用したときの特性を図\ref{ensemble hard tokusei}に示す。
+\performanceevaluation{ensemble_hard}{ensemble 多数決} \label{ensemble hard tokusei}
+
+\subsection{考察}
+全ラベルの内の正解した数は明確に増えており、精度は向上したといえる。
+弱学習器に見られた極端に低い適合率や再現率はrockを除いて見られなくなっている。これは複数の特徴から学習器を作成・統合したために、相互に弱い部分を補完しあった結果だと考えられる。
+各ジャンルに着目するとどちらのモデルでもclassicalの適合率が最も高い一方、rockの適合率は極端に低くなっていた。
+これは、各モデルにおける特性としてclassicalの適合率が高く、rockの適合率・再現率が低いため、それらを集計したモデルも同様の特徴が出たと考える。これはblues,rockと誤判定されている曲数が多いことからも同様に考えられる。
+また、rockはbluesやcountryを起源とし、popの起源となっているため、音楽の特徴からの分類が困難であることもrockの適合率が低い原因であると考える。
+二つの集計関数による大きな違いは現れなかったが、精度に注目すると出力の平均をとる手法のほうが高く約75.7\%であった。これは各モデルの精度を大きく上回っているため、アンサンブル学習によって精度は向上したといえる。
+
+\clearpage
+\section{結言}\label{conclusion}
+本研究では機械学習を用いてジャンル分類を行った。今回作成したモデルではジャンルごとの精度に偏りがあり、十分なモデルとは言い難い。
+今後は特に精度の低かったrockの特徴に焦点を当てた特徴抽出法やモデルを検討し、精度の向上を図る。
+また、好みの曲を効率的に探すという課題解決のためには、曲の特徴そのものよりも曲を聴いた側の感想が重要であるため、SNSを用いて楽曲とそれに対する感想を対応付けるという形での学習手法も検討したい。
+
+\clearpage
+\section*{謝辞}
+研究および論文の執筆にあたり、終始熱心なご指導をいただいた指導教員の内堀教授に深謝いたします。
+また、知能ロボット実験室の皆様には、研究・実験時に助言・協力をしていただきました。ここに感謝の意を表します。
+
+\clearpage
+\begin{thebibliography}{99}
+  \bibitem{tech_spotify}
+  note Spotifyはプレイリストにどう機械学習を活用しているのか？\\
+  \url{https://note.com/hidekiikeda/n/nc7448d1060d4#wQFIx}
+  \bibitem{back ref}
+  秀和システム 物体・画像認識と時系列データ処理入門[第2版]\\
+  \bibitem{cnn ref}
+  Qiita 畳み込みニューラルネットワーク（CNN）まとめ\\
+  \url{https://qiita.com/hara_tatsu/items/8dcd0a339ad2f67932e7}
+  \bibitem{rnn ref}
+  農学情報科学 再帰型ニューラルネットワークによる系列データ解析\\
+  \url{https://axa.biopapyrus.jp/deep-learning/rnn/}
+  \bibitem{lstm ref}
+  AIsmiley 自然言語処理に使われるLSTMとは？RNNとの違いや特徴を紹介\\
+  \url{https://aismiley.co.jp/ai_news/lstm/}
+  \bibitem{sound param}
+  j-stage 音楽情報処理で用いられる音響パラメータによる音楽理解の可能性\\
+  \url{https://www.jstage.jst.go.jp/article/jasj/70/8/70_KJ00009437414/_pdf}
+  \bibitem{GTZAN}
+  kaggle GTZAN Dataset - Music Genre Classification\\
+  \url{https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification}
+  \bibitem{librosa}
+  librosa 0.10.1 documentation\\
+  \url{https://librosa.org/doc/latest/index.html}
+  \bibitem{cqt calc}
+  Christian Schorkhuber,Anssi Klapuri CONSTANT-Q TRANSFORM TOOLBOX FOR MUSIC PROCESSING\\
+  \url{https://core.ac.uk/download/pdf/144846462.pdf}
+  \bibitem{ensemble ref}
+  codExa 機械学習上級者は皆使ってる？！アンサンブル学習の仕組みと3つの種類について解説します\\
+  \url{https://www.codexa.net/what-is-ensemble-learning/}
+\end{thebibliography}
+
+\clearpage
+\section*{付録}
+第\ref{experiment feature}章における各音楽の特徴毎のモデルの特性を以下に示す。
+\performanceevaluation{autocorrelation_tempogram}{autocorrelation tempogram CNN}
+\performanceevaluation{autocorrelation_tempogram_LSTM}{autocorrelation tempogram LSTM}
+\performanceevaluation{chromagram_CNN2}{chromagram CNN}
+\performanceevaluation{chromagram_LSTM}{chromagram LSTM}
+\performanceevaluation{CQT_LSTM}{CQT LSTM}
+\performanceevaluation{fourier_tempogram}{fourier tempogram CNN}
+\performanceevaluation{fourier_tempogram_LSTM}{fourier tempogram LSTM}
+\performanceevaluation{hpss_harmonic_CQT_LSTM}{hpss harmonic CQT LSTM}
+\performanceevaluation{hpss_percussive_CQT_LSTM}{hpss percussive CQT LSTM}
+\performanceevaluation{hpss_percussive_CQT}{hpss percussive CQT CNN}
+\performanceevaluation{hpss_harmonic_melspectrogram_LSTM}{hpss harmonic melspectrogram LSTM}
+\performanceevaluation{hpss_harmonic_melspectrogram}{hpss harmonic melspectrogram CNN}
+\performanceevaluation{hpss_percussive_melspectrogram_LSTM}{hpss percussive melspectrogram LSTM}
+\performanceevaluation{melspectrogram_LSTM}{melspectrogram LSTM}
+\performanceevaluation{MFCC_LSTM}{MFCC LSTM}
+\performanceevaluation{RMS_LSTM}{RMS LSTM}
+\performanceevaluation{RMS_CNN}{RMS CNN}
+\performanceevaluation{spectral_bandwidth_LSTM}{spectral bandwidth LSTM}
+\performanceevaluation{spectral_bandwidth_CNN}{spectral bandwidth CNN}
+\performanceevaluation{spectral_centroid_LSTM}{spectral centroid LSTM}
+\performanceevaluation{spectral_centroid_CNN}{spectral centroid CNN}
+\performanceevaluation{spectral_contrast_LSTM}{spectral contrast LSTM}
+\performanceevaluation{spectral_contrast_CNN}{spectral contrast CNN}
+\performanceevaluation{spectral_flatness_LSTM}{spectral flatness LSTM}
+\performanceevaluation{spectral_flatness_CNN}{spectral flatness CNN}
+\performanceevaluation{spectral_rolloff_LSTM}{spectral rolloff LSTM}
+\performanceevaluation{spectral_rolloff_CNN}{spectral rolloff CNN}
+\performanceevaluation{STFT_LSTM}{STFT LSTM}
+\performanceevaluation{STFT}{STFT CNN}
+\performanceevaluation{Tonnetz_LSTM}{Tonnetz LSTM}
+\performanceevaluation{Tonnetz}{Tonnetz CNN}
+\performanceevaluation{zero_crossing_rate_LSTM}{zero crossing rate LSTM}
+\performanceevaluation{zero_crossing_rate_CNN}{zero crossing rate CNN}
+
+
+
+
+\end{document}
