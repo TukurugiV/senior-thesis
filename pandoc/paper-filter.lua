@@ -8,6 +8,11 @@
     :::example タイトル, :::note, :::algorithm タイトル, :::warning
   - [Table: キャプション]{#tbl:ラベル} - 表の定義（pandoc-crossref形式に変換）
   - <div class="page-break"></div> - ページ区切り
+  - :::figures - 画像の横並びレイアウト
+    - cols属性で列数指定（デフォルト: 画像数に応じて自動）
+    - height属性でブロック全体のデフォルト高さを指定可能
+    - 各画像にwidth属性で幅を指定可能
+    - 各画像にheight属性で高さを指定可能（個別指定はブロック設定より優先）
 
   使用方法:
     pandoc input.md -o output.pdf --lua-filter=paper-filter.lua
@@ -68,6 +73,180 @@ local envStyles = {
   proof = "margin: 1em 0; font-family: serif;"
 }
 
+-- 画像を収集するヘルパー関数
+local function collectImages(blocks)
+  local images = {}
+  for _, block in ipairs(blocks) do
+    if block.t == "Para" then
+      for _, inline in ipairs(block.content) do
+        if inline.t == "Image" then
+          table.insert(images, inline)
+        end
+      end
+    elseif block.t == "Plain" then
+      for _, inline in ipairs(block.content) do
+        if inline.t == "Image" then
+          table.insert(images, inline)
+        end
+      end
+    -- Pandoc 3.x: Figure ブロックから画像を収集
+    elseif block.t == "Figure" then
+      -- Figure の content から画像を取得
+      if block.content then
+        for _, subblock in ipairs(block.content) do
+          if subblock.t == "Plain" or subblock.t == "Para" then
+            for _, inline in ipairs(subblock.content) do
+              if inline.t == "Image" then
+                -- Figure のキャプションと識別子を Image に引き継ぐ
+                if block.caption and block.caption.long then
+                  local captionText = pandoc.utils.stringify(block.caption.long)
+                  if captionText ~= "" then
+                    inline.caption = block.caption.long[1].content or inline.caption
+                  end
+                end
+                if block.identifier and block.identifier ~= "" then
+                  inline.identifier = block.identifier
+                end
+                table.insert(images, inline)
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+  return images
+end
+
+-- クラスリストから属性を抽出するヘルパー関数
+-- :::figures {height=6cm cols=2} のような形式をパース
+local function parseClassAttributes(classes, attributes)
+  local attrs = {}
+  -- 既存の属性をコピー
+  for k, v in pairs(attributes) do
+    attrs[k] = v
+  end
+
+  -- クラスリストから {key=value} 形式を探してパース
+  for _, class in ipairs(classes) do
+    -- {height=6cm} や {cols=2} のような形式をチェック
+    if class:match("^{.*}$") then
+      -- 中括弧を除去してkey=valueをパース
+      local inner = class:sub(2, -2)
+      for key, value in inner:gmatch("([%w_-]+)=([^%s}]+)") do
+        attrs[key] = value
+      end
+    end
+  end
+
+  return attrs
+end
+
+-- 画像の横並びレイアウト処理
+local function processFigures(el)
+  local images = collectImages(el.content)
+  local numImages = #images
+
+  if numImages == 0 then
+    return el
+  end
+
+  -- クラスリストから追加属性をパース（:::figures {height=6cm} 形式対応）
+  local attrs = parseClassAttributes(el.classes, el.attributes)
+
+  -- 属性からcols（列数）を取得、なければ画像数に応じて自動設定
+  local cols = tonumber(attrs.cols) or numImages
+  if cols > numImages then cols = numImages end
+
+  -- ブロック全体のデフォルト高さを取得
+  local defaultHeight = attrs.height
+
+  if OUTPUT_FORMAT:match("latex") or OUTPUT_FORMAT:match("pdf") then
+    -- LaTeX出力（minipage環境を使用、figure環境なし）
+    local latex = "\n\\noindent\\begin{center}\n"
+
+    -- 幅の計算（列間の余白を考慮）
+    local defaultWidthPct = math.floor(90 / cols)
+
+    for i, img in ipairs(images) do
+      -- 画像の幅を属性から取得、なければ自動計算
+      local widthPct = defaultWidthPct
+      if img.attributes.width then
+        local pct = img.attributes.width:match("(%d+)%%")
+        if pct then
+          widthPct = tonumber(pct) or defaultWidthPct
+        end
+      end
+      local minipageWidth = string.format("%.2f\\textwidth", widthPct / 100)
+
+      -- 画像の高さを属性から取得（個別指定 > ブロック全体のデフォルト）
+      local heightOpt = ""
+      local imgHeight = img.attributes.height or defaultHeight
+      if imgHeight then
+        heightOpt = ", height=" .. imgHeight
+      end
+
+      -- サブキャプションを取得
+      local subCaption = pandoc.utils.stringify(img.caption)
+      local subLabel = img.identifier or ""
+
+      latex = latex .. "\\begin{minipage}[t]{" .. minipageWidth .. "}\n"
+      latex = latex .. "\\centering\n"
+      latex = latex .. "\\includegraphics[width=\\linewidth" .. heightOpt .. ", keepaspectratio]{" .. img.src .. "}\n"
+
+      -- サブキャプションとラベル
+      if subCaption ~= "" or subLabel ~= "" then
+        latex = latex .. "\\captionof{figure}{" .. subCaption .. "}"
+        if subLabel ~= "" then
+          latex = latex .. "\\label{" .. subLabel .. "}"
+        end
+        latex = latex .. "\n"
+      end
+      latex = latex .. "\\end{minipage}"
+
+      -- 列間のスペース
+      if i < numImages then
+        if i % cols == 0 then
+          latex = latex .. "\n\n\\vspace{1em}\n\n"
+        else
+          latex = latex .. "\\hfill%\n"
+        end
+      else
+        latex = latex .. "\n"
+      end
+    end
+
+    latex = latex .. "\\end{center}\n"
+    return pandoc.RawBlock("latex", latex)
+
+  else
+    -- HTML出力（flexboxを使用）
+    local html = '<div class="figures" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 1em; margin: 1em 0;">\n'
+    local figWidthPct = math.floor(90 / cols)
+
+    for _, img in ipairs(images) do
+      -- 画像の幅を属性から取得
+      local width = img.attributes.width or (figWidthPct .. "%")
+      -- 画像の高さを属性から取得（個別指定 > ブロック全体のデフォルト）
+      local imgHeight = img.attributes.height or defaultHeight
+      local heightStyle = imgHeight and ("height: " .. imgHeight .. ";") or "height: auto;"
+      local subCaption = pandoc.utils.stringify(img.caption)
+      local subLabel = img.identifier or ""
+      local labelAttr = subLabel ~= "" and (' id="' .. subLabel .. '"') or ""
+
+      html = html .. '<figure style="flex: 0 0 ' .. width .. '; text-align: center; margin: 0;"' .. labelAttr .. '>\n'
+      html = html .. '<img src="' .. img.src .. '" style="max-width: 100%; ' .. heightStyle .. ' object-fit: contain;">\n'
+      if subCaption ~= "" then
+        html = html .. '<figcaption style="font-size: 0.9em; margin-top: 0.5em;">' .. subCaption .. '</figcaption>\n'
+      end
+      html = html .. '</figure>\n'
+    end
+
+    html = html .. '</div>'
+    return pandoc.RawBlock("html", html)
+  end
+end
+
 -- メタデータの取得
 function Meta(m)
   -- メタデータを保存（文字列として）
@@ -93,6 +272,8 @@ function Meta(m)
 
 % 必要なパッケージ
 \usepackage{amsthm}
+\usepackage{graphicx}    % includegraphics コマンド用
+\usepackage{caption}     % captionof コマンド用
 
 % 日本語用の環境名定義
 \theoremstyle{definition}
@@ -259,6 +440,11 @@ function Div(el)
     else
       return pandoc.RawBlock("html", '<div style="page-break-after: always;"></div>')
     end
+  end
+
+  -- 画像の横並びレイアウト（:::figures）
+  if classes:includes("figures") then
+    return processFigures(el)
   end
 
   -- 環境タイプとタイトルを抽出
