@@ -525,6 +525,10 @@ function Pandoc(doc)
     table.insert(new_blocks, pandoc.RawBlock("latex", "\\setlength{\\parindent}{1em}"))
 
     for i, block in ipairs(doc.blocks) do
+      -- レベル1ヘッダー（章）の前に改ページを挿入
+      if block.t == "Header" and block.level == 1 then
+        table.insert(new_blocks, pandoc.RawBlock("latex", "\\clearpage"))
+      end
       table.insert(new_blocks, block)
       -- ヘッダーの直後に\@afterindenttrue を挿入
       if block.t == "Header" then
