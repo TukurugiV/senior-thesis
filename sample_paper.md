@@ -1,4 +1,4 @@
----
+ 
 document_year: "令和7年度"
 document_type: "卒業論文"
 title: "光学式モーションキャプチャ補助デバイスの開発"
@@ -49,7 +49,7 @@ geometry:
   - headheight=15pt
   - headsep=10mm
   - footskip=12mm
----
+ 
 
 <style>
 p {
@@ -145,7 +145,245 @@ PC上では，OptiTrackから取得したモーションデータと補助デバ
 ![剛体のイメージ図](image-4.png){#fig:rigid-image width=30%}
 
 # 慣性式モーションキャプチャ
-## 姿勢推定
-慣性式モーションキャプチャでは，加速度センサ，ジャイロセンサ，場合によっては地磁気センサの9軸IMUでキャプチャされる．今回は，加速度センサとジャイロセンサの6軸で考える．
+## 回転の表し方
 
-現在時刻における加速度センサの出力を$a_{now}=[a_x,a_y,a_z]$とし，ジャイロセンサの出力を$\omega_{now}=[\omega_x,\omega_y,\omega_z]$とする．なお，この時の加速度センサの出力は並進加速度と重力加速度が合わさった値である．
+### 角速度ベクトル
+角速度ベクトル $\vec{\omega}$ とは，物体の瞬間的な回転軸方向と回転角速度の大きさを同時に表すベクトル（[@eq:angular_vec]）であり，回転運動を3つの軸成分に分解して表現したものである．[@diebel2006representing]
+その大きさは回転角速度を，向きは瞬間回転軸を表す（[@fig:angular_vec_img]）．
+
+例えば，$\vec{\omega} = [1, 0, 0]$ のとき，x軸周りに $1[\mathrm{rad/s}]$ で回転していることを意味する．
+慣性式モーションキャプチャなどでは，IMUの出力データを表現する際に用いられる．
+
+$$
+\vec{\omega}=[\omega_x,\omega_y,\omega_z]\ [\mathrm{rad/s}]
+$${#eq:angular_vec}
+
+![角速度ベクトルのイメージ図](image-5.png){#fig:angular_vec_img width=30%}
+
+
+### オイラー角
+オイラー角とは，回転を3つの角度によって表現する方法であり，物体の姿勢を直感的に理解しやすいという特徴を持つ姿勢表現法である．一般に回転は，あらかじめ定められた3軸に対して順番に行われ，各回転角の組によって姿勢が定義される．
+
+代表的な表現として Z-Y-X 系（[@fig:euler_init_1]）があり，これはz軸周りの回転をYaw（[@fig:euler_yaw_1]），y軸周りの回転をPitch（[@fig:euler_pitch_1]），x軸周りの回転を Roll（[@fig:euler_roll_1]）とし，この順に回転を適用するものである [@diebel2006representing]．
+
+::: {.figures}
+![初期状態](euler_1.png){#fig:euler_init_1 width=40%}
+![1.Z-Yaw軸に回転](euler1to2.png){#fig:euler_yaw_1 width=40%}
+![2.Y-Pitch軸に回転](euler2to3.png){#fig:euler_pitch_1 width=40%}
+![3.X-Roll軸に回転](euler3to4.png){#fig:euler_roll_1 width=40%}
+:::
+
+オイラー角は，3つのパラメータのみで姿勢を表現できるため計算量が少ないという利点を有する．一方で，特定の姿勢において自由度が失われるジンバルロックと呼ばれる問題が発生するという欠点がある．
+
+オイラー角は  
+$$
+\boldsymbol{\Theta} = (\phi,\ \theta,\ \psi)\ [\mathrm{rad}]
+$$
+として表す．ここで，$\phi$ は Roll 角，$\theta$ は Pitch 角，$\psi$ は Yaw 角を表す [@diebel2006representing]．
+
+$\boldsymbol{\Theta} = (0,\ \frac{\pi}{2},\ 0)$ のとき，Roll と Yaw の回転軸が一致し，2つの回転が独立に定義できなくなる．このように回転の自由度が1つ失われる姿勢を 特異姿勢 と呼び，この現象をジンバルロックという．
+
+### 回転行列
+回転行列とは，姿勢を線形変換として表現する方法であり，座標変換の観点から姿勢を厳密に記述できる姿勢表現法である．
+
+回転行列は $3\times 3$ の正方行列で表され，物体座標系から固定座標系への変換に用いられる．また，直交行列の性質より逆変換は
+$$
+\mathbf{R}^{-1}=\mathbf{R}^{\mathrm{T}}
+$$
+によって与えられる [@diebel2006representing]．
+
+回転行列 $\mathbf{R}$ は以下の性質を満たす直交行列である（[@eq:roll_vec]）．ここで，$\mathbf{I}$ は単位行列を表す．
+
+$$
+\mathbf{R}^{\mathrm{T}}\mathbf{R}=\mathbf{I},\quad \det(\mathbf{R})=1
+$${#eq:roll_vec}
+
+x，y，z 各軸周りの回転行列は，右手系座標系において正方向から見て反時計回りに回転させる変換として，次のように定義される [@diebel2006representing]．
+
+x軸周りの回転行列（[@eq:roll_vec_x]）
+$$
+\mathbf{R}_x(\phi)=
+\begin{pmatrix}
+1 & 0 & 0 \\
+0 & \cos{\phi} & -\sin{\phi} \\
+0 & \sin{\phi} & \cos{\phi}
+\end{pmatrix}
+$${#eq:roll_vec_x}
+
+y軸周りの回転行列（[@eq:roll_vec_y]）
+$$
+\mathbf{R}_y(\theta)=
+\begin{pmatrix}
+\cos{\theta} & 0 & \sin{\theta} \\
+0 & 1 & 0 \\
+-\sin{\theta} & 0 & \cos{\theta}
+\end{pmatrix}
+$${#eq:roll_vec_y}
+
+z軸周りの回転行列（[@eq:roll_vec_z]）
+$$
+\mathbf{R}_z(\psi)=
+\begin{pmatrix}
+\cos{\psi} & -\sin{\psi} & 0 \\
+\sin{\psi} & \cos{\psi} & 0 \\
+0 & 0 & 1
+\end{pmatrix}
+$${#eq:roll_vec_z}
+
+Z-Y-X 系オイラー角を用いる場合，回転行列は各軸回転行列の積として次式で表される（[@eq:euler_roll_vec]）．
+
+$$
+\mathbf{R}=\mathbf{R}_z(\psi)\mathbf{R}_y(\theta)\mathbf{R}_x(\phi)
+$${#eq:euler_roll_vec}
+
+このとき，回転の適用順序は右から左であり，まず x-Roll 軸回転，次に y-Pitch 軸回転，最後に z-Yaw 軸回転が適用される．  
+回転行列自体には特異点は存在しないが，オイラー角との相互変換においては，不安定性が生じることがある．
+
+### クォータニオン
+クォータニオンは，三次元空間における回転を4つの実数成分によって表現する姿勢表現法である（[@eq:Quaternion]）．オイラー角や回転行列と同様に物体の姿勢を表すことができるが，特異点（ジンバルロック）を持たず，数値的に安定であるという特徴を有する [@diebel2006representing]．
+
+$$
+q=w+xi+yj+zk
+$${#eq:Quaternion}
+
+ここで，$w$ は実部，$x,y,z$ は虚部，$i,j,k$ は四元数における虚数単位である．虚数単位の性質は次式で与えられる（[@eq:imaginary-number-rule]）．
+
+$$
+i^2=j^2=k^2=ijk=-1
+$${#eq:imaginary-number-rule}
+
+クォータニオンは次のようにスカラー部とベクトル部に分けて表すことができる．
+
+$$
+q=(w,\vec{v}_q), \qquad \vec{v}_q=(x,y,z)
+$${#eq:Quaternion_scaler}
+
+回転を表す単位クォータニオンは，回転角 $\theta$ と回転軸 $\vec{u}$ を用いて次式で表される．
+
+$$
+q=(\cos\frac{\theta}{2},\ \vec{u}\sin\frac{\theta}{2})
+$${#eq:Quaternion_union}
+
+ここで，$\vec{u}$ は大きさ1の単位ベクトルである．
+
+三次元空間ベクトル $\vec{a}=(a_x,a_y,a_z)$ を回転させる場合，これを実部0の 純虚クォータニオン 
+$$
+v=(0,a_x,a_y,a_z)
+$$
+として表し，次式により回転を行う．
+
+$$
+v' = q v q^{-1}
+$${#eq:Quaternion_roll_base}
+
+単位クォータニオンにおいて，回転角 $\theta$ は
+$$
+\theta = 2\arccos(w)
+$${#eq:unit_Quaternion_theta}
+より求められ，回転軸は
+$$
+\vec{u}=\frac{(x,y,z)}{\sqrt{1-w^2}}
+$${#eq:unit_Quaternion_u}
+として得られる [@diebel2006representing]．
+
+このことから，クォータニオン回転は「回転軸 $\vec{u}$ の周りに角度 $\theta$ 回転する操作」に対応していることが分かる．
+
+さらに，クォータニオンを用いることで，球面線形補間（SLERP）により角速度の不連続を生じることなく連続的な姿勢遷移を実現できる．
+
+一方，クォータニオンによる回転は [@fig:Quaternion_1]～[@fig:Quaternion_3] に示すように，一つの回転軸を基準として行われる．
+
+::: {.figures}
+![初期状態](./Quaternion_1.png){#fig:Quaternion_1 width=30%}
+![回転途中](./Quaternion_2.png){#fig:Quaternion_2 width=30%}
+![回転終了](./Quaternion_3.png){#fig:Quaternion_3 width=30%}
+:::
+
+## 6軸IMUから角度を取得する基本的な計算手法
+
+6軸IMU（Inertial Measurement Unit）は，3軸ジャイロセンサと3軸加速度センサから構成されており，角速度および並進加速度を同時に計測できる．  
+慣性式モーションキャプチャでは，これらの出力を統合することで各センサの姿勢推定を行う．
+
+### ジャイロセンサによる姿勢推定
+
+ジャイロセンサは，各軸周りの角速度ベクトル
+
+$$
+\vec{\omega}(t) = (\omega_x,\omega_y,\omega_z)
+$$
+
+を出力する．  
+この角速度を時間積分することで姿勢の時間変化を推定できる．
+
+クォータニオンを用いる場合，姿勢の時間微分は次式で表される．
+
+$$
+\dot{q}(t) = \frac{1}{2} q(t) \otimes \Omega(t)
+$$
+
+ここで，
+
+$$
+\Omega(t) = (0,\omega_x,\omega_y,\omega_z)
+$$
+
+は角速度を純虚クォータニオンとして表したものである．
+
+離散時間系において，サンプリング周期を $\Delta t$ とすると，姿勢更新は
+
+$$
+q_{k+1} = q_k \otimes
+\left(
+\cos\frac{|\vec{\omega}_k|\Delta t}{2},
+\frac{\vec{\omega}_k}{|\vec{\omega}_k|}\sin\frac{|\vec{\omega}_k|\Delta t}{2}
+\right)
+$$
+
+として近似的に計算される．
+
+この方法は短時間では高精度であるが，ジャイロバイアスやノイズにより時間経過とともに誤差が蓄積するドリフト問題を有する．
+
+ 
+
+### 加速度センサによる姿勢推定
+
+加速度センサは
+
+$$
+\vec{a} = (a_x,a_y,a_z)
+$$
+
+を出力する．  
+静止状態または等速直線運動時には，観測される加速度は重力加速度のみとなる．
+
+この性質を利用することで，重力方向を基準とした姿勢推定が可能となる．  
+Roll角およびPitch角は次式で与えられる．
+
+$$
+\phi = \arctan2(a_y, a_z)
+$$
+
+$$
+\theta = \arctan2(-a_x,\sqrt{a_y^2+a_z^2})
+$$
+
+加速度センサによる姿勢推定はドリフトを生じないが，運動中には並進加速度の影響を強く受けるため，動的環境下では精度が低下する．  
+また，Yaw角は重力情報のみからは推定できない．
+
+
+なお，ジャイロセンサは短時間(高周波成分)の精度が高いが，ドリフトが発生し得る．一方，加速度センサは長時間(低周波成分)の精度が高いが，高速な運動時に不安定となる．そのため相補フィルタを使用する必要がある．
+
+
+# nRF52840を用いた角度の取得方法
+今回使用するnRF52840は，ジャイロセンサと加速度センサが搭載されている．そのため，以下のような手法で現在の角度を取得することとした．
+
+## キャリブレーション
+ジャイロセンサを使用するにあたり，現在のジャイロに対するバイアスを測定し，除かなければならないため([@eq:cal_gyro_bias])のように計算し推定する．
+
+$$
+\begin{aligned}
+& \text{ジャイロセンサから取得できるデータを} gyro\_data=(g_x,g_y,g_z)\text{としたとき}\\
+& gyro\_bias=(\Sigma{g_x/count},\Sigma{g_y/count},\Sigma{g_z/count})\\
+\end{aligned}
+$${#eq:cal_gyro_bias}
+
+nRF52840のサンプリングレートに関して，今回使用する光学式モーションキャプチャのサンプリングレートである120Hzに合わる．また，ジャイロセンサのキャリブレーションに関しては2.0秒行うものとするため，理論上のサンプル数$count$は，240となる．ただし，通信によるデータロスなどが起こりサンプル数が10を下回った場合，十分なサンプルがなく誤ったバイアスを推定する可能性があるため，この場合はバイアスなしとして処理を行う．

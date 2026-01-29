@@ -28,6 +28,9 @@ local OUTPUT_FORMAT = FORMAT or "html"
 -- メタデータを保持
 local meta = {}
 
+-- HTML用の図番号カウンター
+local htmlFigureCounter = 0
+
 -- 環境タイプのリスト
 -- tcolorbox newtcbtheorem形式: \begin{env}{タイトル}{ラベル}
 local tcbTheoremEnv = {
@@ -194,13 +197,13 @@ local function processFigures(el)
       latex = latex .. "\\centering\n"
       latex = latex .. "\\includegraphics[width=\\linewidth" .. heightOpt .. ", keepaspectratio]{" .. img.src .. "}\n"
 
-      -- サブキャプションとラベル
-      if subCaption ~= "" or subLabel ~= "" then
+      -- サブキャプションとラベル（ラベルがある場合は常に図番号を出力）
+      if subLabel ~= "" then
         latex = latex .. "\\captionof{figure}{" .. subCaption .. "}"
-        if subLabel ~= "" then
-          latex = latex .. "\\label{" .. subLabel .. "}"
-        end
+        latex = latex .. "\\label{" .. subLabel .. "}"
         latex = latex .. "\n"
+      elseif subCaption ~= "" then
+        latex = latex .. "\\captionof{figure}{" .. subCaption .. "}\n"
       end
       latex = latex .. "\\end{minipage}"
 
@@ -236,7 +239,16 @@ local function processFigures(el)
 
       html = html .. '<figure style="flex: 0 0 ' .. width .. '; text-align: center; margin: 0;"' .. labelAttr .. '>\n'
       html = html .. '<img src="' .. img.src .. '" style="max-width: 100%; ' .. heightStyle .. ' object-fit: contain;">\n'
-      if subCaption ~= "" then
+      -- ラベルがある場合は図番号を付ける
+      if subLabel ~= "" then
+        htmlFigureCounter = htmlFigureCounter + 1
+        local figNum = "図" .. htmlFigureCounter
+        if subCaption ~= "" then
+          html = html .. '<figcaption style="font-size: 0.9em; margin-top: 0.5em;">' .. figNum .. ': ' .. subCaption .. '</figcaption>\n'
+        else
+          html = html .. '<figcaption style="font-size: 0.9em; margin-top: 0.5em;">' .. figNum .. '</figcaption>\n'
+        end
+      elseif subCaption ~= "" then
         html = html .. '<figcaption style="font-size: 0.9em; margin-top: 0.5em;">' .. subCaption .. '</figcaption>\n'
       end
       html = html .. '</figure>\n'
