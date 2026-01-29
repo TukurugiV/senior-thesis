@@ -1,4 +1,4 @@
- 
+---
 document_year: "令和7年度"
 document_type: "卒業論文"
 title: "光学式モーションキャプチャ補助デバイスの開発"
@@ -49,7 +49,7 @@ geometry:
   - headheight=15pt
   - headsep=10mm
   - footskip=12mm
- 
+---
 
 <style>
 p {
@@ -298,6 +298,40 @@ $${#eq:unit_Quaternion_u}
 ![回転終了](./Quaternion_3.png){#fig:Quaternion_3 width=30%}
 :::
 
+### オイラー角(ZYK)からクォータニオンへの変換
+今回の座標系は右手系で，回転順序をZYX(Yaw→Pitch→Roll)である．この時，YawはZ軸回り，PitchはY軸回り，RollはX軸回りである．合成回転を([@eq:join_roll])とする．
+
+$$
+R = R_z(\psi)\,R_y(\theta)\,R_x(\phi)
+$${#eq:join_roll}
+
+半角の三角関数は([@eq:phi_function]),([@eq:theta_function]),([@eq:psi_function])のように示される．
+$$
+c_\phi=\cos\left(\frac{\phi}{2}\right),\quad
+s_\phi=\sin\left(\frac{\phi}{2}\right)
+$${#eq:phi_function}
+
+$$
+c_\theta=\cos\left(\frac{\theta}{2}\right),\quad
+s_\theta=\sin\left(\frac{\theta}{2}\right)
+$${#eq:theta_function}
+
+$$
+c_\psi=\cos\left(\frac{\psi}{2}\right),\quad
+s_\psi=\sin\left(\frac{\psi}{2}\right)
+$${#eq:psi_function}
+
+この時，クォータニオンは([@eq:fomula_quaternion])で求められる．
+$$
+\begin{aligned}
+&w = c_\psi c_\theta c_\phi + s_\psi s_\theta s_\phi \\
+&x = c_\psi c_\theta s_\phi - s_\psi s_\theta c_\phi \\
+&y = c_\psi s_\theta c_\phi + s_\psi c_\theta s_\phi \\
+&z = s_\psi c_\theta c_\phi - c_\psi s_\theta s_\phi \\
+\end{aligned}
+$${#eq:fomula_quaternion}
+
+
 ## 6軸IMUから角度を取得する基本的な計算手法
 
 6軸IMU（Inertial Measurement Unit）は，3軸ジャイロセンサと3軸加速度センサから構成されており，角速度および並進加速度を同時に計測できる．  
@@ -387,3 +421,125 @@ $$
 $${#eq:cal_gyro_bias}
 
 nRF52840のサンプリングレートに関して，今回使用する光学式モーションキャプチャのサンプリングレートである120Hzに合わる．また，ジャイロセンサのキャリブレーションに関しては2.0秒行うものとするため，理論上のサンプル数$count$は，240となる．ただし，通信によるデータロスなどが起こりサンプル数が10を下回った場合，十分なサンプルがなく誤ったバイアスを推定する可能性があるため，この場合はバイアスなしとして処理を行う．
+
+Roll並びにPitchの初期姿勢を推定する([@eq:cal_accel])．
+
+$$
+\begin{aligned}
+& \text{加速度センサから取得できるデータを} \\ 
+& accel\_data=(a_x,a_y,a_z)\text{としたとき}\\
+& accel\_mean=(\Sigma{a_x/count},\Sigma{a_y/count},\Sigma{a_z/count})\\
+& roll_0=\arctan2(accel\_mean_y,accel\_mean_z) \\
+& pitch_0=\arctan2(-ax,\sqrt{({accel\_mean_y}^2,{accel\_mean_z}^2)})\\
+& yaw_0=0\\
+& \text{なお，この時}\arctan2\text{は}\\
+& \arctan2(y,x) \text{のとき，} -\pi<\theta\le\pi\text{の範囲で}\\
+& x=r\cos\theta\\
+& y=r\sin\theta\\
+& r=\sqrt{x^2+y^2}\\
+& \text{ただし}r>0\text{となる単一の値}\theta\text{を返す関数である．}
+\end{aligned}
+$${#eq:cal_accel}
+
+なお，この時nRF52840は停止しているものとし，サンプル数$count$はジャイロセンサのキャリブレーションと同様のものであるとする．
+
+## バイアス補正，単位変換
+バイアスを毎回除去するとき([@eq:gyro_sub_bias])のように行なう．
+
+$$
+\begin{aligned}
+& gyro\_current=(g_x-gyro\_bias.x,g_y-gyro\_bias.y,g_z-gyro\_bias.z)
+\end{aligned}
+$${#eq:gyro_sub_bias}
+
+また，単位を変換させるとき([@eq:rad2rads])のように計算する．
+
+$$
+\begin{aligned}
+\omega=gyro\_current\cdot\frac{\pi}{180} [rad/s]
+\end{aligned}
+$${#eq:rad2rads}
+
+## 姿勢推定
+### 高周波成分(ジャイロ)の姿勢更新
+ジャイロセンサから取得できるデータを$\frac{1}{サンプリングレート}$で更新する．回転量は([@eq:get_gyro])で計算される．
+$$
+\begin{aligned}
+& \Delta \vec{\theta} = \vec{\omega} \cdot dt \\
+& \theta = \sqrt{
+  (\Delta\theta_x)^2 +
+(\Delta\theta_y)^2 +
+(\Delta\theta_z)^2}\\
+& \text{回転軸ベクトルは}\\
+&\vec{u} =
+\frac{1}{\theta}
+\begin{bmatrix}
+\Delta\theta_x \\
+\Delta\theta_y \\
+\Delta\theta_z
+\end{bmatrix}\\
+& \text{クォータニオンは}\\
+& dq =
+\begin{bmatrix}
+\cos(\theta/2) \\
+u_x \sin(\theta/2) \\
+u_y \sin(\theta/2) \\
+u_z \sin(\theta/2)
+\end{bmatrix}\\
+& \text{と定義される．}\\
+& q_{\mathrm{gyro}}=\mathrm{normalize}(q_{current} \otimes dq)\\
+& \text{で高周波成分のクォータニオンが得られる．}
+\end{aligned}
+$${#eq:get_gyro}
+
+### 低周波成分(加速度)の姿勢更新
+加速度から取得できるデータを$\frac{1}{サンプリングレート}$で更新する．回転量は([@eq:get_accel])で計算される．
+
+$$
+\begin{aligned}
+& roll\_accel = \arctan2(a_y, a_z)\\
+& pitch\_accel = \arctan2(-a_x,\sqrt{a_y^2 + a_z^2})\\
+& yaw\_accel = yaw\_gyro\\
+\end{aligned}
+$${#eq:get_accel}
+
+### クォータニオン化
+加速度によって得られるオイラー角をクォータニオンへ([@eq:accel2quater])変換する．
+
+$$
+q\_accel=\text{Quaternion}(roll\_accel,pitch\_accel,yaw\_accel)
+$${#eq:accel2quater}
+
+## 相補フィルタで融合
+高周波の場合はジャイロセンサからのデータを，低周波の場合は加速度センサからのデータを採用するため([@eq:nlerp])，以下のようなフィルタで融合させる([@fig:nlerp_filter])．今回$\alpha=0.98$とする．
+
+$$
+q=\mathrm{nlerp}(q_{\mathrm{gyro}},q_{\mathrm{accel}},t=1-\alpha)
+$${#eq:nlerp}
+
+::: {.figures}
+![相補フィルタの周波数特性](image-6.png){#fig:nlerp_filter width=50%}
+:::
+
+## 加速度の信頼性判定
+加速度センサから得られる姿勢情報は，静止時または等速直線運動時には重力方向を正しく示すが，動的な運動中には並進加速度の影響を受け信頼性が低下する．そこで，加速度のノルムを用いた信頼性判定を行う([@eq:accel_norm_check])．
+
+$$
+\begin{aligned}
+& \|\vec{a}\| = \sqrt{a_x^2 + a_y^2 + a_z^2}\\
+& \text{もし } 0.5 < \|\vec{a}\| < 1.5 \text{ [G] のとき，加速度データを使用}\\
+& \text{そうでない場合，ジャイロのみで姿勢更新}
+\end{aligned}
+$${#eq:accel_norm_check}
+
+なお，静止時の加速度ノルムは重力加速度の$1.0$[G]となる．しきい値を$0.5$～$1.5$[G]とすることで，急激な運動や衝撃が加わった際には加速度センサの情報を無視し，ジャイロセンサのみによる姿勢更新を行う．これにより，動的環境下における姿勢推定の安定性を向上させる．
+
+以上の処理により，120HzでnRF52840の現在の姿勢を推定することができる．
+
+# 光学式モーションキャプチャとの同期
+今回使用しているOptiTrackとnRF52840は別のデバイスで，同期機能を実装しなければ収録されたデータを同期して再生することができないため，以下のように同期機能を実装した．
+
+
+\newpage
+
+# 参考文献
