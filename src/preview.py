@@ -4,10 +4,10 @@ import os
 from vpython import canvas, vector, box, arrow, color, rate, label
 
 # ========= Rust バイナリのパス =========
-RUST_BIN_PATH = r"./rust/target/debug/imu_orientation_rust.exe"  # 最新ビルドを使用
+RUST_BIN_PATH = r"./target/release/imu_orientation_rust.exe"  # 最新ビルドを使用
 
 # ========= 使用するシリアルポート名 =========
-PORT_NAME = "COM6"  # 実環境に合わせて変更
+PORT_NAME = "COM10"  # 実環境に合わせて変更
 
 # ========= 軸の変換設定 =========
 AXIS_REMAP = [0, 2, 1]  # 必要に応じて変更

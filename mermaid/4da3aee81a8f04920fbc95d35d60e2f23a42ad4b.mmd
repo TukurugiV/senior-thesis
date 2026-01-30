@@ -1,0 +1,28 @@
+%%{init:{'theme':'forest'}}%%
+flowchart LR
+    subgraph TX_SIDE [送信側]
+        IMU["IMUセンサ (LSM6DS3)"]
+        TX["送信用デバイス (XIAO nRF52840)"]
+    end
+
+    subgraph SYNC_SIDE [同期・受信]
+        ESYNC["OptiTrack eSync2"]
+        RX["受信用デバイス (XIAO nRF52840)"]
+    end
+
+    subgraph PC_SIDE [PC処理]
+        RUST["Rustプログラム (姿勢推定処理)"]
+        OPTI["OptiTrack Motive"]
+    end
+
+    subgraph VIS_SIDE [可視化]
+        UNITY["Unity (3D描画)"]
+    end
+
+    IMU -->|I2C| TX
+    TX -->|BLE| RX
+    ESYNC -->|同期パルス| RX
+    RX -->|シリアル通信| RUST
+    ESYNC -->|同期| OPTI
+    OPTI -->|モーションデータ| UNITY
+    RUST -->|UDP| UNITY
