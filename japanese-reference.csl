@@ -40,14 +40,12 @@
 
       <!-- 文献タイプ別の処理 -->
       <choose>
-        <!-- Webページ -->
+        <!-- Webページ / オンライン -->
         <if type="webpage post-weblog">
-          <!-- Webサイト名称 -->
-          <text variable="container-title" prefix=" " suffix="."/>
           <!-- URL -->
-          <text variable="URL" prefix=" "/>
+          <text variable="URL" prefix=" " suffix=","/>
           <!-- 参照日 -->
-          <date variable="accessed" prefix="," suffix="(参照日)">
+          <date variable="accessed">
             <date-part name="year"/>
             <date-part name="month" form="numeric-leading-zeros" prefix="-"/>
             <date-part name="day" form="numeric-leading-zeros" prefix="-"/>

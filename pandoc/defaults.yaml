@@ -43,9 +43,14 @@ metadata:
   tblPrefix: "表"
   tableTitle: "表"
   eqnPrefix: "式"
-  secPrefix: "節"
+  secPrefix: "第"
   lstPrefix: "リスト"
   numberSections: true
+
+# 参考文献
+bibliography: references.bib
+csl: japanese-reference.csl
+citeproc: true
 
 # 目次
 toc: true

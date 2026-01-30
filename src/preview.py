@@ -105,7 +105,7 @@ def main():
             [RUST_BIN_PATH, PORT_NAME],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,  # stderrもキャプチャしてエラーを確認
+            stderr=subprocess.PIPE,
             text=True,
             encoding="utf-8",
             errors="ignore",
@@ -187,7 +187,6 @@ def main():
 
     scene.bind("keydown", on_keydown)
 
-    # stdout と stderr をノンブロッキングに（UNIX 前提／Windows では不要なら削除）
     if proc.stdout:
         try:
             os.set_blocking(proc.stdout.fileno(), False)

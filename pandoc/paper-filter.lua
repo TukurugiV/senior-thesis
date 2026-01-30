@@ -552,6 +552,101 @@ function Pandoc(doc)
   return doc
 end
 
+-- @import記法の処理（Markdown Preview Enhanced互換）
+-- @import "ファイルパス" の形式でファイルを読み込む
+function CodeBlock(el)
+  return el
+end
+
+-- Paraブロック内の@import記法を処理
+local function processImport(el)
+  local text = pandoc.utils.stringify(el)
+
+  -- @import "ファイルパス" パターンを検出
+  local filePath = text:match('^@import%s+"([^"]+)"') or text:match("^@import%s+'([^']+)'")
+
+  if filePath then
+    -- ファイルを読み込む
+    local file = io.open(filePath, "r")
+    if file then
+      local content = file:read("*all")
+      file:close()
+
+      -- ファイル拡張子を取得
+      local ext = filePath:match("%.([^%.]+)$")
+      if ext then
+        ext = ext:lower()
+      end
+
+      -- 言語を拡張子から推測
+      local lang = ""
+      local langMap = {
+        py = "python",
+        js = "javascript",
+        ts = "typescript",
+        rb = "ruby",
+        rs = "rust",
+        c = "c",
+        cpp = "cpp",
+        h = "c",
+        hpp = "cpp",
+        java = "java",
+        go = "go",
+        lua = "lua",
+        sh = "bash",
+        bash = "bash",
+        zsh = "zsh",
+        ps1 = "powershell",
+        yaml = "yaml",
+        yml = "yaml",
+        json = "json",
+        xml = "xml",
+        html = "html",
+        css = "css",
+        sql = "sql",
+        md = "markdown",
+        tex = "latex",
+        toml = "toml",
+        ino = "cpp"  -- Arduino
+      }
+      lang = langMap[ext] or ext or ""
+
+      -- CodeBlockとして返す
+      return pandoc.CodeBlock(content, {class = lang})
+    else
+      -- ファイルが見つからない場合はエラーメッセージを表示
+      io.stderr:write("Warning: Could not open file: " .. filePath .. "\n")
+      return pandoc.Para({pandoc.Strong({pandoc.Str("[Error: File not found: " .. filePath .. "]")})})
+    end
+  end
+
+  return nil
+end
+
+-- Paraの処理を拡張（@import対応）
+function Para(el)
+  -- @importの処理を試みる
+  local importResult = processImport(el)
+  if importResult then
+    return importResult
+  end
+
+  -- 元のPara処理を実行
+  local text = pandoc.utils.stringify(el)
+
+  if text:match("^%[Table:") or text:match("^%[") then
+    local caption, label = text:match("^%[([^%]]+)%]%{#(tbl:[a-zA-Z0-9_-]+)%}")
+    if caption and label then
+      caption = caption:gsub("^Table:%s*", "")
+      return pandoc.Para({
+        pandoc.Str(": " .. caption .. " {#" .. label .. "}")
+      })
+    end
+  end
+
+  return el
+end
+
 -- フィルターの実行順序
 return {
   {Meta = Meta},

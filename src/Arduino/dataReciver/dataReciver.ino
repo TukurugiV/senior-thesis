@@ -17,7 +17,7 @@ void data_notify_callback(BLEClientCharacteristic* chr, uint8_t* data, uint16_t 
 
 BLEClientService        dataService(DATA_SERVICE_UUID);
 BLEClientCharacteristic dataChar(DATA_CHAR_UUID);
-BLEClientCharacteristic requestChar(REQUEST_CHAR_UUID);  // リクエスト送信用
+BLEClientCharacteristic requestChar(REQUEST_CHAR_UUID);
 
 void scan_callback(ble_gap_evt_adv_report_t* report);
 void connect_callback(uint16_t conn_handle);
@@ -44,7 +44,6 @@ void setup()
 {
   Serial.begin(921600);
   #if ENABLE_DEBUG
-  // タイムアウト付きでシリアル接続を待つ（最大1秒）
   for (int i = 0; i < 100 && !Serial; i++) {
     delay(10);
   }
@@ -54,7 +53,6 @@ void setup()
   delay(100);
   #endif
 
-  // GPIO設定
   pinMode(SYNC_RESET_PIN, INPUT_PULLUP);
   pinMode(SYNC_COUNT_PIN, INPUT_PULLUP);
 
@@ -80,7 +78,6 @@ void setup()
   dataChar.setNotifyCallback(data_notify_callback);
   dataChar.begin();
 
-  // リクエスト用Characteristicの設定
   requestChar.begin();
 
   Bluefruit.Central.setConnectCallback(connect_callback);
@@ -111,7 +108,7 @@ void loop()
     
     #if ENABLE_DEBUG
     static uint32_t lastDebugPrint = 0;
-    if (now - lastDebugPrint >= 1000) {  // 1秒ごとにデバッグ出力
+    if (now - lastDebugPrint >= 1000) {
       lastDebugPrint = now;
       Serial.print("[AUTO] Sequence: ");
       Serial.println(currentSequence);
@@ -160,7 +157,6 @@ void loop()
     }
   }
 
-  // リセットがトリガーされた場合もリクエストを送信（オプション）
   if (syncResetTriggered) {
     syncResetTriggered = false;
     
@@ -247,7 +243,6 @@ void connect_callback(uint16_t conn_handle)
     #if ENABLE_DEBUG
     Serial.println("Request characteristic NOT found (optional)");
     #endif
-    // リクエスト機能がなくても継続
   } else {
     #if ENABLE_DEBUG
     Serial.println("Request characteristic found");
@@ -300,7 +295,7 @@ void disconnect_callback(uint16_t conn_handle, uint8_t reason)
   #endif
 }
 
-static uint8_t packet_buffer[24];  // シーケンス番号分を追加
+static uint8_t packet_buffer[24];
 static uint16_t buffer_pos = 0;
 static const uint16_t PACKET_SIZE = 24;
 

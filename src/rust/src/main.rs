@@ -58,13 +58,13 @@ impl ImuPacket {
 // ==== スケーリング ====
 
 fn gyro_to_dps(gx: i16, gy: i16, gz: i16) -> (f64, f64, f64) {
-    // 例: ±2000 dps / 16.4 LSB/dps など、センサ仕様に合わせる
+    // 例: ±2000 dps / 16.4 LSB/dps 
     let scale = 16.384_f64;
     (gx as f64 / scale, gy as f64 / scale, gz as f64 / scale)
 }
 
 fn accel_to_g(ax: i16, ay: i16, az: i16) -> (f64, f64, f64) {
-    // 例: ±4 g / 8192 LSB/g など、センサ仕様に合わせる
+    // 例: ±4 g / 8192 LSB/g 
     let scale = 8192.0_f64;
     (ax as f64 / scale, ay as f64 / scale, az as f64 / scale)
 }
@@ -77,14 +77,13 @@ fn clear_serial_buffer(port: &mut dyn SerialPort) -> Result<usize> {
     let start_time = Instant::now();
     let max_duration = Duration::from_millis(100); // 最大100msだけクリア
 
-    // 一定時間だけバッファをクリア（センサーが継続的にデータを送る場合に対応）
+    // 一定時間だけバッファをクリア
     while start_time.elapsed() < max_duration {
         match port.read(&mut buf) {
             Ok(n) if n > 0 => {
                 cleared += n;
             }
             Ok(_) | Err(_) => {
-                // タイムアウトまたはデータなし
                 break;
             }
         }
@@ -102,7 +101,6 @@ fn read_packet(port: &mut dyn SerialPort) -> Result<Option<ImuPacket>> {
 
     // ヘッダ同期 (0x55, 0xAA) - タイムアウト付き
     loop {
-        // 同期タイムアウトチェック
         if sync_start.elapsed() > sync_timeout {
             return Ok(None);
         }
@@ -299,7 +297,6 @@ impl Quaternion {
         let t = t.clamp(0.0, 1.0);
         let inv_t = 1.0 - t;
 
-        // 角度のショートパスをとるため、dot<0 の場合は片方反転
         let dot = self.w * other.w + self.x * other.x + self.y * other.y + self.z * other.z;
         let (ow, ox, oy, oz) = if dot < 0.0 {
             (-other.w, -other.x, -other.y, -other.z)
@@ -424,12 +421,10 @@ fn calibrate(port: &mut dyn SerialPort, duration_sec: f64) -> Result<(Quaternion
 
 // ==== メイン ====
 //
-// 標準入力で "CALIBRATE" を受け取ると途中キャリブレーションを実行し，
-// 終了時に "CALIBRATION_DONE" を標準出力に出す。
-// 姿勢データは以下の2つの形式で出力:
+// 標準入力で "CALIBRATE" を受け取ると途中キャリブレーションを実行
+// "CALIBRATION_DONE" を標準出力
 //   1. 標準出力: "DATA_Q,seq,request_seq,qw,qx,qy,qz" (クォータニオン、パルス同期シーケンス付き)
 //   2. UDP: "DATA,seq,request_seq,ex_x,ex_y,ex_z,ey_x,ey_y,ey_z" (Unity用回転ベクトル)
-// UDP通信は 127.0.0.1:50005 に送信し、50006ポートでCALIBRATEコマンドを受け取る。
 
 fn main() -> Result<()> {
     // コマンドライン引数からポート名を受け取る
@@ -447,14 +442,13 @@ fn main() -> Result<()> {
         ports[0].port_name.clone()
     };
 
-    let baud = 115200;  // センサーの実際のボーレートに合わせて変更
+    let baud = 115200;
 
     let mut port = serialport::new(&port_name, baud)
         .timeout(Duration::from_millis(200))
         .open()
         .with_context(|| format!("ポート {} を開けませんでした", port_name))?;
 
-    // DTR/RTS を有効化してセンサーのデータ送信を開始
     port.write_data_terminal_ready(true)?;
     port.write_request_to_send(true)?;
 

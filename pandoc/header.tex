@@ -1,6 +1,18 @@
 % 論文向けLaTeXヘッダー
 % カスタム環境の定義
 
+% セクション番号を「第n章」形式に設定（追加パッケージ不要）
+\renewcommand{\thesection}{第\arabic{section}章}
+\renewcommand{\thesubsection}{\arabic{section}.\arabic{subsection}}
+\renewcommand{\thesubsubsection}{\arabic{section}.\arabic{subsection}.\arabic{subsubsection}}
+
+% 目次の「第n章」がかぶらないように幅を調整（標準コマンド使用）
+\makeatletter
+\renewcommand{\l@section}{\@dottedtocline{1}{0em}{4.5em}}
+\renewcommand{\l@subsection}{\@dottedtocline{2}{1.5em}{3.5em}}
+\renewcommand{\l@subsubsection}{\@dottedtocline{3}{3.8em}{4.5em}}
+\makeatother
+
 % 段落の1行目を字下げ（セクション直後も含む）
 \usepackage{indentfirst}
 \usepackage{etoolbox}

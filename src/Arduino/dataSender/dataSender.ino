@@ -37,7 +37,7 @@ Adafruit_NeoPixel pixel(1, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
 BLEService        customService(0x1234);
 BLECharacteristic txChar(0x5678);
-BLECharacteristic requestChar(REQUEST_CHAR_UUID);  // リクエスト受信用
+BLECharacteristic requestChar(REQUEST_CHAR_UUID);
 
 void cccd_callback(uint16_t conn_hdl, BLECharacteristic* chr, uint16_t cccd_value);
 void request_write_callback(uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* data, uint16_t len);
@@ -124,7 +124,7 @@ void updateLed() {
 
     case LEDMODE_REQUEST_RECEIVED: {
       ledState = true;
-      showColor(true, 0, 255, 255);  // シアン: リクエスト受信
+      showColor(true, 0, 255, 255);
     } break;
   }
 }
@@ -132,7 +132,6 @@ void updateLed() {
 void setup() {
   Serial.begin(115200);
   #if ENABLE_DEBUG
-  // タイムアウト付きでシリアル接続を待つ（最大1秒）
   for (int i = 0; i < 100 && !Serial; i++) {
     delay(10);
   }
@@ -266,7 +265,7 @@ void loop() {
 
   // リクエストベース送信: リクエストを受け取った時だけデータを送信
   if (Bluefruit.connected() && hasNewRequest) {
-    hasNewRequest = false;  // フラグをクリア
+    hasNewRequest = false;
 
     // IMU DATA READ
     float gyroX_f = imu.readFloatGyroX();
@@ -291,7 +290,7 @@ void loop() {
     IMUPacket packet;
     packet.header = PACKET_HEADER;
     packet.seq = counter;
-    packet.requestSeq = currentRequestSeq;  // リクエストされたシーケンス番号を含める
+    packet.requestSeq = currentRequestSeq;
     packet.gx = gyroX;
     packet.gy = gyroY;
     packet.gz = gyroZ;
@@ -366,7 +365,6 @@ void request_write_callback(uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* 
     Serial.println(newSeq);
     #endif
 
-    // LED表示
     ledMode = LEDMODE_REQUEST_RECEIVED;
     ledModeExpire = millis() + 100;
   }
