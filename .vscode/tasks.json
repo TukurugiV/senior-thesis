@@ -2,33 +2,71 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Build PDF with Pandoc",
+      "label": "Build PDF (Portable)",
       "type": "shell",
-      "command": "pandoc",
+      "command": "powershell",
       "args": [
-        "${file}",
-        "-o",
-        "${fileDirname}/${fileBasenameNoExtension}.pdf",
-        "--pdf-engine=xelatex",
-        "--lua-filter=v:/卒研関係/pandoc/mermaid.lua",
-        "--lua-filter=v:/卒研関係/pandoc/paper-filter.lua",
-        "--filter=pandoc-crossref",
-        "--citeproc",
-        "--bibliography=v:/卒研関係/references.bib",
-        "--csl=v:/卒研関係/japanese-reference.csl",
-        "--lua-filter=v:/卒研関係/pandoc/cite-superscript.lua",
-        "--number-sections",
-        "-V", "mainfont=Harano Aji Mincho",
-        "-V", "geometry:top=30mm,bottom=30mm,left=20mm,right=20mm",
-        "--include-in-header=v:/卒研関係/pandoc/header.tex"
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}/build.ps1",
+        "${file}"
       ],
       "options": {
-        "cwd": "${fileDirname}"
+        "cwd": "${workspaceFolder}"
       },
       "group": {
         "kind": "build",
         "isDefault": true
       },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Build PDF (System Tools)",
+      "type": "shell",
+      "command": "pandoc",
+      "args": [
+        "${file}",
+        "-f", "markdown-smart",
+        "-o",
+        "${fileDirname}/${fileBasenameNoExtension}.pdf",
+        "--pdf-engine=xelatex",
+        "--lua-filter=${workspaceFolder}/pandoc/mermaid.lua",
+        "--lua-filter=${workspaceFolder}/pandoc/paper-filter.lua",
+        "--filter=pandoc-crossref",
+        "--citeproc",
+        "--bibliography=${workspaceFolder}/references.bib",
+        "--csl=${workspaceFolder}/japanese-reference.csl",
+        "--lua-filter=${workspaceFolder}/pandoc/cite-superscript.lua",
+        "--number-sections",
+        "-V", "mainfont=Harano Aji Mincho",
+        "-V", "geometry:top=30mm,bottom=30mm,left=20mm,right=20mm",
+        "--include-in-header=${workspaceFolder}/pandoc/header.tex"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Setup Portable Environment",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}/setup.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "none",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",

@@ -4,8 +4,6 @@
 
   対応記法:
   - :::cover - 表紙
-  - :::theorem タイトル, :::proof, :::lemma タイトル, :::definition タイトル,
-    :::example タイトル, :::note, :::algorithm タイトル, :::warning
   - [Table: キャプション]{#tbl:ラベル} - 表の定義（pandoc-crossref形式に変換）
   - <div class="page-break"></div> - ページ区切り
   - :::figures - 画像の横並びレイアウト
@@ -25,56 +23,28 @@
 -- 出力フォーマットを取得
 local OUTPUT_FORMAT = FORMAT or "html"
 
+-- LaTeX特殊文字をエスケープする関数
+local function escapeLatex(str)
+  if not str then return "" end
+  -- LaTeXの特殊文字をエスケープ
+  str = str:gsub("\\", "\\textbackslash{}")
+  str = str:gsub("&", "\\&")
+  str = str:gsub("%%", "\\%%")
+  str = str:gsub("%$", "\\$")
+  str = str:gsub("#", "\\#")
+  str = str:gsub("_", "\\_")
+  str = str:gsub("{", "\\{")
+  str = str:gsub("}", "\\}")
+  str = str:gsub("~", "\\textasciitilde{}")
+  str = str:gsub("%^", "\\textasciicircum{}")
+  return str
+end
+
 -- メタデータを保持
 local meta = {}
 
 -- HTML用の図番号カウンター
 local htmlFigureCounter = 0
-
--- 環境タイプのリスト
--- tcolorbox newtcbtheorem形式: \begin{env}{タイトル}{ラベル}
-local tcbTheoremEnv = {
-  theorem = true,
-  lemma = true,
-  definition = true,
-  example = true,
-  algorithm = true
-}
-
--- tcolorbox newtcolorbox形式: \begin{env}
-local tcbBoxEnv = {
-  note = true,
-  warning = true
-}
-
--- amsthm proof形式: \begin{proof}
-local amsthmEnv = {
-  proof = true
-}
-
--- 環境の日本語名
-local envNames = {
-  theorem = "定理",
-  lemma = "補題",
-  definition = "定義",
-  example = "例",
-  algorithm = "アルゴリズム",
-  note = "注",
-  warning = "警告",
-  proof = "証明"
-}
-
--- 環境のスタイル（HTML用 - LaTeXライクなシンプルスタイル）
-local envStyles = {
-  theorem = "margin: 1em 0; font-family: serif;",
-  lemma = "margin: 1em 0; font-family: serif;",
-  definition = "margin: 1em 0; font-family: serif;",
-  example = "margin: 1em 0; font-family: serif;",
-  algorithm = "margin: 1em 0; font-family: serif;",
-  note = "margin: 1em 0; font-family: serif;",
-  warning = "margin: 1em 0; font-family: serif;",
-  proof = "margin: 1em 0; font-family: serif;"
-}
 
 -- 画像を収集するヘルパー関数
 local function collectImages(blocks)
@@ -280,40 +250,10 @@ function Meta(m)
   if OUTPUT_FORMAT:match("latex") or OUTPUT_FORMAT:match("pdf") then
     local latex_header = [[
 % 論文向けLaTeXヘッダー
-% カスタム環境の定義
 
 % 必要なパッケージ
-\usepackage{amsthm}
 \usepackage{graphicx}    % includegraphics コマンド用
 \usepackage{caption}     % captionof コマンド用
-
-% 日本語用の環境名定義
-\theoremstyle{definition}
-
-% 定理環境
-\newtheorem{theorem}{定理}[section]
-
-% 補題環境
-\newtheorem{lemma}{補題}[section]
-
-% 定義環境
-\newtheorem{definition}{定義}[section]
-
-% 例環境
-\newtheorem{example}{例}[section]
-
-% アルゴリズム環境
-\newtheorem{algorithm}{アルゴリズム}[section]
-
-% 注釈環境（番号なし）
-\theoremstyle{remark}
-\newtheorem*{note}{注}
-
-% 警告環境（番号なし）
-\newtheorem*{warning}{警告}
-
-% 証明環境（amsthmのデフォルトを使用、日本語化）
-\renewcommand{\proofname}{証明}
 ]]
     local headers = m['header-includes'] or pandoc.MetaList({})
     -- header-includesが単体の要素かリストかで処理を分ける（通常はリスト）
@@ -323,66 +263,8 @@ function Meta(m)
     table.insert(headers, pandoc.RawBlock('latex', latex_header))
     m['header-includes'] = headers
   end
-  
+
   return m
-end
-
--- クラスリストから環境タイプとタイトルを抽出
--- :::theorem ピタゴラスの定理 → type="theorem", title="ピタゴラスの定理"
-local function extractEnvInfo(classes)
-  local envType = nil
-  local title = {}
-
-  for i, class in ipairs(classes) do
-    if i == 1 then
-      -- 最初のクラスが環境タイプ
-      if tcbTheoremEnv[class] or tcbBoxEnv[class] or amsthmEnv[class] then
-        envType = class
-      end
-    else
-      -- 残りのクラスはタイトルの一部（スペース区切り）
-      table.insert(title, class)
-    end
-  end
-
-  return envType, table.concat(title, " ")
-end
-
--- LaTeX環境を生成
-local function createLatexEnv(envName, title, content, envType)
-  local latex_content = pandoc.write(pandoc.Pandoc(content), "latex")
-
-  -- タイトルがある場合はオプション引数として追加
-  local titleOpt = ""
-  if title and title ~= "" then
-    titleOpt = "[" .. title .. "]"
-  end
-
-  return pandoc.RawBlock("latex", string.format([[
-\begin{%s}%s
-%s
-\end{%s}
-]], envName, titleOpt, latex_content, envName))
-end
-
--- HTML環境を生成
-local function createHtmlEnv(envType, title, content)
-  local html_content = pandoc.write(pandoc.Pandoc(content), "html")
-  local envName = envNames[envType] or envType
-  local style = envStyles[envType] or ""
-
-  local titleHtml = ""
-  if title and title ~= "" then
-    titleHtml = string.format("<strong>%s: %s</strong><br>", envName, title)
-  else
-    titleHtml = string.format("<strong>%s</strong><br>", envName)
-  end
-
-  return pandoc.RawBlock("html", string.format([[
-<div class="%s" style="%s">
-%s%s
-</div>
-]], envType, style, titleHtml, html_content))
 end
 
 -- Divの処理（fenced divs: :::xxx）
@@ -402,8 +284,8 @@ function Div(el)
 
     if OUTPUT_FORMAT:match("latex") or OUTPUT_FORMAT:match("pdf") then
       local latex_content = pandoc.write(pandoc.Pandoc(el.content), "latex")
-      -- 年度と文書タイプを結合
-      local year_type = document_year .. " " .. document_type
+      -- 年度と文書タイプを結合（LaTeX特殊文字をエスケープ）
+      local year_type = escapeLatex(document_year) .. " " .. escapeLatex(document_type)
       return pandoc.RawBlock("latex", string.format([[
 \thispagestyle{empty}
 \begin{center}
@@ -425,11 +307,14 @@ function Div(el)
 %% Cover content end
 \clearpage
 \setcounter{page}{1}
-]], year_type, title, student_id, author, affiliation, supervisor, date, latex_content))
+]], year_type, escapeLatex(title), escapeLatex(student_id), escapeLatex(author), escapeLatex(affiliation), escapeLatex(supervisor), escapeLatex(date), latex_content))
     else
       -- HTML出力（フルページ・中央揃え・枠線なし）
       local year_type = document_year .. " " .. document_type
-      return pandoc.RawBlock("html", string.format([[
+      -- Divとして返すことで、Pandocの構造を維持
+      local coverDiv = pandoc.Div({}, pandoc.Attr("", {"cover-rendered"}, {}))
+      coverDiv.content = {
+        pandoc.RawBlock("html", string.format([[
 <div class="cover" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; min-height: 100vh; padding: 20mm; box-sizing: border-box;">
   <h2 style="font-size: 1.8em; margin-top: 40mm;">%s</h2>
   <h1 style="font-size: 2.2em; margin-top: 40mm;">%s</h1>
@@ -442,6 +327,8 @@ function Div(el)
   </table>
 </div>
 ]], year_type, title, student_id, author, affiliation, supervisor, date))
+      }
+      return coverDiv
     end
   end
 
@@ -459,19 +346,7 @@ function Div(el)
     return processFigures(el)
   end
 
-  -- 環境タイプとタイトルを抽出
-  local envType, title = extractEnvInfo(classes)
-
-  if not envType then
-    return el
-  end
-
-  -- 出力形式に応じて処理
-  if OUTPUT_FORMAT:match("latex") or OUTPUT_FORMAT:match("pdf") then
-    return createLatexEnv(envType, title, el.content, envType)
-  else
-    return createHtmlEnv(envType, title, el.content)
-  end
+  return el
 end
 
 -- HTMLのRawBlockを処理（ページ区切り）
@@ -501,54 +376,148 @@ function RawBlock(el)
   return el
 end
 
--- Spanの処理（表のキャプション記法の変換）
-function Span(el)
-  if el.identifier and el.identifier:match("^tbl:") then
-    local text = pandoc.utils.stringify(el.content)
-    text = text:gsub("^Table:%s*", "")
-    el.content = {pandoc.Str(text)}
+-- 表キャプション記法をパースする関数
+-- [Table: キャプション]{#tbl:label} 形式を検出
+-- Pandocによって Span 要素に変換されるため、Span要素から情報を取得
+local function parseTableCaption(block)
+  if block.t ~= "Para" then return nil end
+
+  -- Para ブロック内の Span 要素を検索
+  for _, inline in ipairs(block.content) do
+    if inline.t == "Span" and inline.identifier and inline.identifier:match("^tbl:") then
+      local text = pandoc.utils.stringify(inline.content)
+      local caption = text:gsub("^Table:%s*", "")
+      return { caption = caption, label = inline.identifier }
+    end
+  end
+  return nil
+end
+
+-- 表カウンター
+local tableCounter = 0
+
+-- 表ラベルと番号のマッピング
+local tableLabelMap = {}
+
+-- 表とキャプションをLaTeXで出力
+local function createTableWithCaptionLatex(tableBlock, captionInfo, tableNum)
+  local tableContent = pandoc.write(pandoc.Pandoc({tableBlock}), "latex")
+
+  -- longtable環境の場合はキャプションを先頭に挿入
+  if tableContent:match("\\begin{longtable}") then
+    -- longtable の開始直後にキャプションを挿入
+    local captionLine = "\\caption{" .. captionInfo.caption .. "}\\label{" .. captionInfo.label .. "}\\\\\n"
+    tableContent = tableContent:gsub(
+      "(\\begin{longtable}%[[^%]]*%]\n)",
+      "%1" .. captionLine
+    )
+    return pandoc.RawBlock("latex", tableContent)
+  else
+    -- 通常の表は table 環境でラップ
+    local latex = "\\begin{table}[htbp]\n"
+    latex = latex .. "\\centering\n"
+    latex = latex .. "\\caption{" .. captionInfo.caption .. "}\\label{" .. captionInfo.label .. "}\n"
+    latex = latex .. tableContent
+    latex = latex .. "\\end{table}"
+    return pandoc.RawBlock("latex", latex)
+  end
+end
+
+-- 表とキャプションをHTMLで出力
+local function createTableWithCaptionHtml(tableBlock, captionInfo, tableNum)
+  local tableContent = pandoc.write(pandoc.Pandoc({tableBlock}), "html")
+
+  local html = '<figure id="' .. captionInfo.label .. '" class="table-figure" style="margin: 1em 0;">\n'
+  html = html .. '<figcaption style="text-align: center; font-weight: bold; margin-bottom: 0.5em;">表' .. tableNum .. ': ' .. captionInfo.caption .. '</figcaption>\n'
+  html = html .. tableContent
+  html = html .. '</figure>'
+  return pandoc.RawBlock("html", html)
+end
+
+-- 表参照を解決する関数（Cite要素を処理）
+local function resolveTableRefs(doc)
+  local function resolveCite(el)
+    if el.t == "Cite" then
+      for _, citation in ipairs(el.citations) do
+        local id = citation.id
+        if id:match("^tbl:") and tableLabelMap[id] then
+          local num = tableLabelMap[id]
+          if OUTPUT_FORMAT:match("latex") or OUTPUT_FORMAT:match("pdf") then
+            return pandoc.RawInline("latex", "表\\ref{" .. id .. "}")
+          else
+            return pandoc.Link({pandoc.Str("表" .. num)}, "#" .. id)
+          end
+        end
+      end
+    end
     return el
   end
-  return el
+
+  return doc:walk({Cite = resolveCite})
 end
 
--- Paraの処理（独自の表記法を変換）
-function Para(el)
-  local text = pandoc.utils.stringify(el)
+-- ドキュメント全体の処理（インデント設定を挿入 + 表キャプション処理）
+function Pandoc(doc)
+  local processed_blocks = {}
+  local i = 1
 
-  if text:match("^%[Table:") or text:match("^%[") then
-    local caption, label = text:match("^%[([^%]]+)%]%{#(tbl:[a-zA-Z0-9_-]+)%}")
-    if caption and label then
-      caption = caption:gsub("^Table:%s*", "")
-      return pandoc.Para({
-        pandoc.Str(": " .. caption .. " {#" .. label .. "}")
-      })
+  -- 表キャプションの処理（1回目のパス：表を処理してマッピングを作成）
+  while i <= #doc.blocks do
+    local block = doc.blocks[i]
+    local captionInfo = parseTableCaption(block)
+
+    if captionInfo then
+      -- 次のブロックが表かチェック
+      local nextBlock = doc.blocks[i + 1]
+      if nextBlock and nextBlock.t == "Table" then
+        -- 表番号をインクリメント
+        tableCounter = tableCounter + 1
+        -- ラベルと番号のマッピングを保存
+        tableLabelMap[captionInfo.label] = tableCounter
+
+        -- キャプション付き表を生成
+        if OUTPUT_FORMAT:match("latex") or OUTPUT_FORMAT:match("pdf") then
+          table.insert(processed_blocks, createTableWithCaptionLatex(nextBlock, captionInfo, tableCounter))
+        else
+          table.insert(processed_blocks, createTableWithCaptionHtml(nextBlock, captionInfo, tableCounter))
+        end
+        i = i + 2 -- キャプション行と表の両方をスキップ
+      else
+        -- 次のブロックが表でない場合はそのまま出力
+        table.insert(processed_blocks, block)
+        i = i + 1
+      end
+    else
+      table.insert(processed_blocks, block)
+      i = i + 1
     end
   end
 
-  return el
-end
+  doc.blocks = processed_blocks
 
--- ドキュメント全体の処理（インデント設定を挿入）
-function Pandoc(doc)
+  -- 表参照を解決（2回目のパス）
+  doc = resolveTableRefs(doc)
+
+  -- LaTeX/PDF出力時の追加処理
   if OUTPUT_FORMAT:match("latex") or OUTPUT_FORMAT:match("pdf") then
-    local new_blocks = {}
+    local final_blocks = {}
     -- ドキュメント本文の最初にインデント設定を挿入
-    table.insert(new_blocks, pandoc.RawBlock("latex", "\\setlength{\\parindent}{1em}"))
+    table.insert(final_blocks, pandoc.RawBlock("latex", "\\setlength{\\parindent}{1em}"))
 
-    for i, block in ipairs(doc.blocks) do
+    for _, block in ipairs(doc.blocks) do
       -- レベル1ヘッダー（章）の前に改ページを挿入
       if block.t == "Header" and block.level == 1 then
-        table.insert(new_blocks, pandoc.RawBlock("latex", "\\clearpage"))
+        table.insert(final_blocks, pandoc.RawBlock("latex", "\\clearpage"))
       end
-      table.insert(new_blocks, block)
+      table.insert(final_blocks, block)
       -- ヘッダーの直後に\@afterindenttrue を挿入
       if block.t == "Header" then
-        table.insert(new_blocks, pandoc.RawBlock("latex", "\\makeatletter\\@afterindenttrue\\makeatother"))
+        table.insert(final_blocks, pandoc.RawBlock("latex", "\\makeatletter\\@afterindenttrue\\makeatother"))
       end
     end
-    doc.blocks = new_blocks
+    doc.blocks = final_blocks
   end
+
   return doc
 end
 
@@ -624,24 +593,12 @@ local function processImport(el)
 end
 
 -- Paraの処理を拡張（@import対応）
+-- 注意: 表キャプションの処理は Pandoc 関数で行うため、ここでは変換しない
 function Para(el)
   -- @importの処理を試みる
   local importResult = processImport(el)
   if importResult then
     return importResult
-  end
-
-  -- 元のPara処理を実行
-  local text = pandoc.utils.stringify(el)
-
-  if text:match("^%[Table:") or text:match("^%[") then
-    local caption, label = text:match("^%[([^%]]+)%]%{#(tbl:[a-zA-Z0-9_-]+)%}")
-    if caption and label then
-      caption = caption:gsub("^Table:%s*", "")
-      return pandoc.Para({
-        pandoc.Str(": " .. caption .. " {#" .. label .. "}")
-      })
-    end
   end
 
   return el
@@ -650,6 +607,6 @@ end
 -- フィルターの実行順序
 return {
   {Meta = Meta},
-  {Div = Div, RawBlock = RawBlock, Para = Para, Span = Span},
+  {Div = Div, RawBlock = RawBlock, Para = Para},
   {Pandoc = Pandoc}
 }

@@ -1,6 +1,9 @@
 % 論文向けLaTeXヘッダー
 % カスタム環境の定義
 
+% コードブロック内の日本語表示用フォント設定
+\setmonofont{BIZ UDGothic}
+
 % セクション番号を「第n章」形式に設定（追加パッケージ不要）
 \renewcommand{\thesection}{第\arabic{section}章}
 \renewcommand{\thesubsection}{\arabic{section}.\arabic{subsection}}
@@ -28,32 +31,28 @@
 \usepackage{subcaption}  % 画像の横並び・サブキャプション用
 \setcounter{secnumdepth}{3} % 章番号を表示
 
-% 数式番号をセクションごとにリセット
-\numberwithin{equation}{section}
+% 表のキャプションを上に配置（日本語論文の慣例）
+\captionsetup[table]{position=above, skip=5pt}
 
-% 図番号をセクションごとにリセット
-\numberwithin{figure}{section}
-
-% 表番号をセクションごとにリセット
-\numberwithin{table}{section}
+% 図・表・数式番号は通し番号（セクションごとにリセットしない）
 
 % 日本語用の環境名定義
 \theoremstyle{definition}
 
 % 定理環境
-\newtheorem{theorem}{定理}[section]
+\newtheorem{theorem}{定理}
 
 % 補題環境
-\newtheorem{lemma}{補題}[section]
+\newtheorem{lemma}{補題}
 
 % 定義環境
-\newtheorem{definition}{定義}[section]
+\newtheorem{definition}{定義}
 
 % 例環境
-\newtheorem{example}{例}[section]
+\newtheorem{example}{例}
 
 % アルゴリズム環境
-\newtheorem{algorithm}{アルゴリズム}[section]
+\newtheorem{algorithm}{アルゴリズム}
 
 % 注釈環境（番号なし）
 \theoremstyle{remark}

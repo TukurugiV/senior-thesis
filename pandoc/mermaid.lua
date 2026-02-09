@@ -18,11 +18,12 @@ local utils  = pandoc.utils
 local OUT_FMT = os.getenv("MERMAID_FORMAT") or "png"
 
 -- Directory to store generated images
--- Use absolute path to ensure it works from any working directory
-local OUT_DIR = "v:/卒研関係/mermaid"
+-- Default: ./mermaid relative to the document
+local OUT_DIR = os.getenv("MERMAID_OUT_DIR") or "mermaid"
 
 -- mermaid-cli executable
-local MMDC = os.getenv("MERMAID_MMDC") or "v:\\home\\tarou\\.npm-global\\mmdc.cmd"
+-- Default: look for mmdc in PATH, or use tools/node_modules/.bin/mmdc.cmd for portable setup
+local MMDC = os.getenv("MERMAID_MMDC") or "mmdc"
 
 -- Ensure output directory exists
 local function ensure_dir(path)
