@@ -1,142 +1,224 @@
 ---
-title: "光学式モーションキャプチャ補助デバイスの開発"
-author: "中野晃聖"
-date: "2026年1月30日"
+document_year: "令和xx年度"
+document_type: "記法リファレンス"
+title: "Pandoc 論文テンプレート 記法リファレンス"
+student_id: "S000000"
+author: "著者名"
 affiliation: "宇部工業高等専門学校 制御情報工学科"
+supervisor: "指導教員名"
+date: "2026年1月30日"
 lang: ja
+indent: true
 mainfont: "Harano Aji Mincho"
+linestretch: 1.25
+parskip: 0.5em
 figPrefix: "図"
 figureTitle: "図"
 tblPrefix: "表"
 tableTitle: "表"
 eqnPrefix: "式"
-secPrefix: "節"
+secPrefix: "第"
 lstPrefix: "リスト"
 output:
   pdf_document:
     pdf_engine: xelatex
-    path: sample_paper.pdf
+    path: pandoc.doc.pdf
     include-in-header: pandoc/header.tex
     mainfont: "Noto Sans CJK JP"
+    number_sections: true
+    toc: false
+    pandoc_args:
+      - "--lua-filter=pandoc/mermaid.lua"
+      - "--lua-filter=pandoc/paper-filter.lua"
+      - "--filter=pandoc-crossref"
+      - "--citeproc"
+      - "--bibliography=references.bib"
+      - "--csl=japanese-reference.csl"
+      - "--lua-filter=pandoc/cite-superscript.lua"
+      - "--number-sections"
+      - "-M"
+      - "numberSections=true"
+      - "-M"
+      - "link-citations=true"
 export_on_save:
   pdf: true
 geometry:
-  - top=20mm
-  - bottom=20mm
-  - left=15mm
-  - right=15mm
+  - top=30mm
+  - bottom=30mm
+  - left=20mm
+  - right=20mm
+  - headheight=15pt
+  - headsep=10mm
+  - footskip=12mm
 ---
 
 :::cover
 :::
 
-# Pandoc + Custom Lua Filter 記法リファレンス
+\tableofcontents
+\newpage
 
-このドキュメントでは、Pandocおよび独自のLuaフィルター（`paper-filter.lua`）を使用した論文執筆用の記法を解説します。
-基本的には**Pandoc Markdown**に準拠しており、`pandoc-crossref`フィルターと併用することを想定しています。
+# システム構成
 
----
+本テンプレートは **Pandoc** を中核に，複数のフィルターとツールを組み合わせて Markdown から学術論文PDF を生成するシステムである．
 
-## 1. 文書メタデータ (YAML Frontmatter)
+## 処理パイプライン
 
-ファイルの先頭にYAML形式でメタデータを記述します。これらは表紙生成(`:::cover`)に使用されます。
+ビルド時，以下の順序でフィルターが実行される（`build.ps1` で定義）．
+
+| 順序 | フィルター              | 種類          | 役割                                      |
+| :--: | :---------------------- | :------------ | :---------------------------------------- |
+|  1   | `mermaid.lua`           | Lua フィルター | Mermaid記法をPNG画像に変換                |
+|  2   | `paper-filter.lua`      | Lua フィルター | 表紙・改ページ・横並び画像・表キャプション・ファイルインポートなどの独自記法を処理 |
+|  3   | `pandoc-crossref`       | 外部フィルター | 図・表・数式・節の相互参照と自動番号付け  |
+|  4   | `citeproc`              | Pandoc 内蔵   | 参考文献の処理（BibTeX + CSL）            |
+|  5   | `cite-superscript.lua`  | Lua フィルター | 引用番号 `[1]` を上付き文字に変換         |
+
+最終的に **XeLaTeX** でPDFが生成される．
+
+## ファイル構成
+
+```
+report_template/
+├── build.ps1                 # ビルドスクリプト（PowerShell）
+├── sample_paper.md           # テンプレート文書
+├── references.bib            # 参考文献データベース（BibTeX）
+├── japanese-reference.csl    # 引用スタイル定義（CSL）
+├── pandoc/
+│   ├── defaults.yaml         # Pandoc デフォルト設定
+│   ├── header.tex            # LaTeX プリアンブル（環境定義・フォント設定）
+│   ├── paper-filter.lua      # 独自記法フィルター（メイン）
+│   ├── mermaid.lua           # Mermaid 図変換フィルター
+│   ├── cite-superscript.lua  # 引用上付き変換フィルター
+│   └── preview-style.css     # プレビュー用スタイル
+├── mermaid/                  # Mermaid 画像キャッシュ（自動生成）
+└── .vscode/
+    ├── settings.json         # エディタ設定
+    └── tasks.json            # ビルドタスク定義
+```
+
+## ビルド方法
+
+PowerShellで以下を実行する．
+
+```powershell
+.\build.ps1 -InputFile sample_paper.md
+```
+
+VSCode では `Ctrl+Shift+B` でビルドタスクを実行できる．
+
+:::page-break
+:::
+
+# 文書メタデータ（YAML Frontmatter）
+
+ファイル先頭に YAML 形式でメタデータを記述する．表紙の生成やpandoc-crossrefの日本語設定に使用される．
 
 ```yaml
 ---
-title: "論文タイトル"
-author: "著者名"
-affiliation: "所属機関"
-date: "202x年x月"
+document_year: "令和xx年度"       # 年度（表紙に表示）
+document_type: "卒業論文"         # 文書タイプ（表紙に表示）
+title: "論文タイトル"             # タイトル（表紙に表示）
+student_id: "S123456"             # 学籍番号（表紙に表示）
+author: "著者名"                  # 著者名（表紙に表示）
+affiliation: "所属学科"           # 所属（表紙に表示）
+supervisor: "指導教員名"          # 指導教員（表紙に表示）
+date: "yyyy年mm月dd日"            # 日付（表紙に表示）
+lang: ja                          # 言語
+mainfont: "Harano Aji Mincho"     # 本文フォント
+linestretch: 1.25                 # 行間
+parskip: 0.5em                    # 段落間スペース
+figPrefix: "図"                   # 図参照の接頭辞
+tblPrefix: "表"                   # 表参照の接頭辞
+eqnPrefix: "式"                   # 数式参照の接頭辞
 ---
 ```
 
----
+:::page-break
+:::
 
-## 2. 独自拡張記法 (Custom Syntax)
+# 独自拡張記法
 
-`paper-filter.lua` によって処理される独自の記法です。
+`paper-filter.lua` によって処理される独自の記法を解説する．
 
-### 2.1 表紙 (Cover)
+## 表紙
 
-メタデータの内容を用いて、論文の表紙を生成します。
-LaTeX/PDF出力時は `\begin{titlepage}` 環境、HTML出力時は全画面のカバーページとしてレンダリングされます。
+YAMLメタデータの内容を用いて論文の表紙を生成する．
+LaTeX出力時は中央揃えの表紙ページが生成され，ページ番号が1にリセットされる．
 
-**記法:**
 ```markdown
 :::cover
 :::
 ```
 
-### 2.2 学術系環境 (Environments)
+表紙には以下の情報が表示される：年度・文書タイプ，タイトル，学籍番号，氏名，所属学科，指導教員，日付．
 
-定理、証明、定義などの環境を構築するために `:::Type Title` 形式のfenced divsを使用します。
-LaTeX出力時は `tcolorbox` または `amsthm` 環境に、HTML出力時はスタイル付きの `div` に変換されます。
+## 改ページ
 
-**基本構文:**
-```markdown
-:::EnvType タイトル
-内容...
-:::
-```
+強制的に改ページを行う．LaTeX出力時は `\newpage`，HTML出力時は `page-break-after: always` に変換される．
 
-**使用可能な環境一覧:**
-
-| 環境名 (EnvType) | 日本語名     | LaTeX環境  | 用途                     |
-| :--------------- | :----------- | :--------- | :----------------------- |
-| `theorem`        | 定理         | theorem    | 定理の記述               |
-| `lemma`          | 補題         | lemma      | 補題の記述               |
-| `definition`     | 定義         | definition | 用語の定義               |
-| `example`        | 例           | example    | 具体例の提示             |
-| `algorithm`      | アルゴリズム | algorithm  | アルゴリズムの説明       |
-| `note`           | 注           | note       | 注釈、補足               |
-| `warning`        | 警告         | warning    | 注意喚起                 |
-| `proof`          | 証明         | proof      | 証明の記述 (末尾に□付与) |
-
-**使用例:**
-
-```markdown
-:::theorem ピタゴラスの定理
-直角三角形において、斜辺の2乗は他の2辺の2乗の和に等しい。
-:::
-
-:::proof
-$a^2 + b^2 = c^2$ であることを示す。
-（証明略）
-:::
-
-:::algorithm バブルソート
-1. 配列の先頭から順に隣接要素を比較
-2. 順序が逆なら交換
-3. 配列末尾まで繰り返す
-:::
-```
-
-### 2.3 ページ区切り (Page Break)
-
-強制的に改ページを行います。
-LaTeX/PDF出力時は `\newpage`、HTML出力時は `page-break-after: always` に変換されます。
-
-**記法1 (Fenced Div):**
+**記法1（Fenced Div）:**
 ```markdown
 :::page-break
 :::
 ```
 
-**記法2 (HTMLタグ - 互換性のため):**
+**記法2（HTMLタグ）:**
 ```html
 <div class="page-break"></div>
 ```
 
-### 2.4 表記法拡張 (Table Extension)
+## 複数画像の横並びレイアウト
 
-表のキャプションを記述するための拡張記法です。`pandoc-crossref` が認識可能な形式に正規化されます。
+`:::figures` （または `::: {.figures}`）で囲んだ画像を横並びに配置できる．
+LaTeX出力時は `minipage` 環境，HTML出力時は flexbox レイアウトで描画される．
 
-**記法:**
+### 基本（幅指定あり）
+
 ```markdown
-[Table: キャプション]{#tbl:ラベル}
+::: {.figures}
+![キャプション1](image1.jpg){#fig:a width=40%}
+![キャプション2](image2.jpg){#fig:b width=40%}
+:::
 ```
 
-**例:**
+### 列数指定（cols）
+
+`cols` 属性で1行あたりの画像数を指定する．画像数が `cols` を超えると自動的に次の行に折り返す．
+
+```markdown
+::: {.figures cols=2}
+![画像1](image1.jpg){#fig:c}
+![画像2](image2.jpg){#fig:d}
+![画像3](image3.jpg){#fig:e}
+![画像4](image4.jpg){#fig:f}
+:::
+```
+
+### 高さ指定（height）
+
+ブロック全体のデフォルト高さを指定できる．各画像に個別の `height` を指定した場合はそちらが優先される．
+
+```markdown
+::: {.figures height=5cm}
+![画像1](image1.jpg){#fig:g}
+![画像2](image2.jpg){#fig:h}
+:::
+```
+
+### 属性一覧
+
+| 属性     | 対象           | 説明                               | 例               |
+| :------- | :------------- | :--------------------------------- | :--------------- |
+| `cols`   | ブロック全体   | 1行あたりの列数（デフォルト:画像数） | `cols=2`         |
+| `height` | ブロック全体   | デフォルトの画像高さ               | `height=5cm`     |
+| `width`  | 個別の画像     | 画像の幅（%指定）                  | `width=40%`      |
+| `height` | 個別の画像     | 画像の高さ（ブロック設定より優先） | `height=3cm`     |
+
+## 表キャプション記法
+
+`[Table: キャプション]{#tbl:ラベル}` の形式で表のキャプションを記述できる．`paper-filter.lua` が表番号を自動付与し，`[@tbl:ラベル]` で参照できる．
+
 ```markdown
 [Table: 実験結果の比較]{#tbl:results}
 
@@ -144,24 +226,63 @@ LaTeX/PDF出力時は `\newpage`、HTML出力時は `page-break-after: always` �
 | :------- | :--- |
 | 提案手法 | 95%  |
 | 従来手法 | 80%  |
+
+[@tbl:results]に結果を示す．
 ```
-↓ 内部的に以下のように変換され、`pandoc-crossref` で処理されます。
+
+pandoc-crossref の標準記法（表の下にキャプションを書く形式）も使用できる．
+
 ```markdown
-: 実験結果の比較 {#tbl:results}
+| 手法     | 精度 |
+| :------- | :--- |
+| 提案手法 | 95%  |
+| 従来手法 | 80%  |
 
-| 手法 | 精度 |
-...
+: 実験結果の比較 {#tbl:results}
 ```
 
----
+## ファイルインポート
 
-## 3. 標準 Pandoc / Pandoc-crossref 記法
+`@import "ファイルパス"` でソースコードなどの外部ファイルを読み込み，コードブロックとして挿入する．ファイル拡張子から言語を自動判定し，シンタックスハイライトが適用される．
 
-以下は標準的なPandocまたは標準的なプラグイン（pandoc-crossref）の機能ですが、併せてよく使用されます。
+```markdown
+@import "./sample.py"
+```
 
-### 3.1 図 (Figures)
+対応する拡張子と言語の対応：
 
-画像埋め込み時に `{}` でIDを指定することで、図番号とキャプションが付きます。
+| 拡張子                              | 言語          |
+| :---------------------------------- | :------------ |
+| `.py`                               | Python        |
+| `.js`                               | JavaScript    |
+| `.ts`                               | TypeScript    |
+| `.c`, `.h`                          | C             |
+| `.cpp`, `.hpp`, `.ino`              | C++           |
+| `.java`                             | Java          |
+| `.go`                               | Go            |
+| `.rs`                               | Rust          |
+| `.rb`                               | Ruby          |
+| `.lua`                              | Lua           |
+| `.sh`, `.bash`                      | Bash          |
+| `.ps1`                              | PowerShell    |
+| `.yaml`, `.yml`                     | YAML          |
+| `.json`                             | JSON          |
+| `.html`, `.css`, `.xml`             | HTML/CSS/XML  |
+| `.sql`                              | SQL           |
+| `.tex`                              | LaTeX         |
+| `.md`                               | Markdown      |
+| `.toml`                             | TOML          |
+
+:::page-break
+:::
+
+# 標準 Pandoc / pandoc-crossref 記法
+
+以下は Pandoc および pandoc-crossref の標準機能である．
+
+## 図（Figures）
+
+画像に `{#fig:ラベル}` を付けると，図番号が自動付与され `[@fig:ラベル]` で参照できる．
 
 **定義:**
 ```markdown
@@ -170,39 +291,190 @@ LaTeX/PDF出力時は `\newpage`、HTML出力時は `page-break-after: always` �
 
 **参照:**
 ```markdown
-[@fig:system] にシステム構成を示す。
+[@fig:system]にシステム構成を示す．
 ```
 
-### 3.2 表 (Tables)
+## 数式（Equations）
+
+`$$` で囲んだ数式に `{#eq:ラベル}` を付けると，式番号が自動付与される．
 
 **定義:**
-標準的なMarkdownの表の直前（または直後）にキャプションを置きます。独自記法を使わない場合は以下のように書けます。
-
-```markdown
-| A   | B   |
-| --- | --- |
-| 1   | 2   |
-
-: 表のキャプション {#tbl:sample}
-```
-
-**参照:**
-```markdown
-詳細は [@tbl:sample] を参照。
-```
-
-### 3.3 数式 (Equations)
-
-**定義:**
-`$$` で囲み、末尾に `{#eq:label}` を付与します。
-
 ```markdown
 $$
 E = mc^2
-$$ {#eq:einstein}
+$${#eq:einstein}
 ```
 
 **参照:**
 ```markdown
-[@eq:einstein] より導かれる。
+[@eq:einstein]より導かれる．
 ```
+
+## 節の参照
+
+セクション見出しに `{#sec:ラベル}` を付けると `[@sec:ラベル]` で参照できる．
+
+```markdown
+## 実験方法 {#sec:method}
+
+詳細は[@sec:method]を参照．
+```
+
+## 見出しの表示形式
+
+`header.tex` の設定により，レベル1見出しは「第n章」形式で表示される．
+
+```markdown
+# 見出し1        → 第1章 見出し1
+## 見出し2       → 1.1 見出し2
+### 見出し3      → 1.1.1 見出し3
+```
+
+レベル1見出しの前には自動で改ページが挿入される（`paper-filter.lua` の `Pandoc` 関数で処理）．
+
+## 目次
+
+LaTeX の `\tableofcontents` コマンドで目次を挿入する．通常は表紙の直後に配置する．
+
+```markdown
+:::cover
+:::
+
+\tableofcontents
+\newpage
+```
+
+:::page-break
+:::
+
+# Mermaid ダイアグラム
+
+`mermaid.lua` フィルターにより，Mermaid 記法のコードブロックが自動的に画像に変換される．
+
+## 記法
+
+````markdown
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant Backend
+
+    User->>Frontend: 操作要求
+    Frontend->>Backend: APIリクエスト
+    Backend-->>Frontend: レスポンス
+    Frontend-->>User: 画面更新
+```
+````
+
+## 動作仕組み
+
+1. コードブロックの内容からSHA1ハッシュを計算
+2. `mermaid/` ディレクトリにキャッシュを確認（同じ内容なら再生成しない）
+3. キャッシュがなければ `mmdc`（mermaid-cli）を実行してPNG画像を生成
+4. コードブロックを生成された画像に置換
+
+## 環境変数
+
+| 変数名            | デフォルト値 | 説明                          |
+| :---------------- | :----------- | :---------------------------- |
+| `MERMAID_MMDC`    | `mmdc`       | mermaid-cli の実行ファイルパス |
+| `MERMAID_FORMAT`  | `png`        | 出力形式（`png` / `svg`）     |
+| `MERMAID_OUT_DIR` | `mermaid/`   | 画像キャッシュディレクトリ    |
+
+`mmdc` が見つからない場合は警告が表示され，コードブロックがそのまま残る．
+
+:::page-break
+:::
+
+# 参考文献・引用
+
+## 参考文献データベース
+
+`references.bib` に BibTeX 形式で文献を登録する．
+
+```bibtex
+@article{article_pattern_recognition,
+  title={Pattern Recognition and Machine Learning},
+  author={Christopher M. Bishop},
+  year={2006},
+  url={https://example.com/prml.pdf}
+}
+```
+
+## 本文中の引用
+
+```markdown
+～がニューラルネットワークである[@article_pattern_recognition]．
+```
+
+`cite-superscript.lua` により，引用番号は上付き文字として表示される（例: `[1]` → 上付きの `[1]`）．
+
+## 参考文献リストの挿入
+
+文書末尾に以下を記述すると，そこに参考文献リストが生成される．
+
+```markdown
+::: {#refs}
+:::
+```
+
+引用スタイルは `japanese-reference.csl` で定義されており，番号順の日本語学術形式で出力される．
+
+:::page-break
+:::
+
+# LaTeX ヘッダー設定（header.tex）
+
+`pandoc/header.tex` で以下の設定が行われている．
+
+## フォント
+
+| 用途       | フォント           |
+| :--------- | :----------------- |
+| 本文       | Harano Aji Mincho  |
+| コードブロック | BIZ UDGothic       |
+
+## ページレイアウト
+
+| 項目       | 値      |
+| :--------- | :------ |
+| 上余白     | 30mm    |
+| 下余白     | 30mm    |
+| 左余白     | 20mm    |
+| 右余白     | 20mm    |
+| 行間       | 1.25    |
+| 段落間     | 0.5em   |
+| 字下げ     | 1em     |
+
+## 主要な LaTeX パッケージ
+
+| パッケージ    | 用途                             |
+| :------------ | :------------------------------- |
+| `graphicx`    | 画像の挿入                       |
+| `caption`     | キャプション制御                 |
+| `subcaption`  | サブキャプション（横並び画像用） |
+| `indentfirst` | セクション直後の字下げ           |
+
+表のキャプションは日本語論文の慣例に従い，表の上に配置される．
+
+:::page-break
+:::
+
+# 必要な環境
+
+## 必須ツール
+
+| ツール           | 用途                         |
+| :--------------- | :--------------------------- |
+| Pandoc           | 文書変換エンジン             |
+| XeLaTeX          | PDF生成（TeX Live / TinyTeX）|
+| pandoc-crossref  | 相互参照処理                 |
+| Harano Aji フォント | 日本語表示                   |
+
+## オプション
+
+| ツール                         | 用途                   |
+| :----------------------------- | :--------------------- |
+| Node.js + @mermaid-js/mermaid-cli | Mermaid ダイアグラム描画 |
+| VSCode + Markdown Preview Enhanced | プレビュー環境         |
