@@ -147,3 +147,15 @@ sequenceDiagram
 ```md
 @import "./sample.py"
 ```
+
+## 見た目
+![](./doc-photos/147cc81d-01.png)
+![](./doc-photos/147cc81d-02.png)
+![](./doc-photos/147cc81d-03.png)
+![](./doc-photos/147cc81d-04.png)
+![](./doc-photos/147cc81d-05.png)
+![](./doc-photos/147cc81d-06.png)
+![](./doc-photos/147cc81d-07.png)
+![](./doc-photos/147cc81d-08.png)
+![](./doc-photos/147cc81d-09.png)
+![](./doc-photos/147cc81d-10.png)

@@ -89,10 +89,10 @@ li > p {
 画像に関して[@fig:image1]で自動で番号付けされて参照可能．
 
 ```md
-![イメージ画像1](image1.jpg){#fig:image1}
+![イメージ画像1](doc-photos/image1.jpg){#fig:image1}
 ```
 ### 見え方(基本)
-![イメージ画像1](image1.jpg){#fig:image1}
+![イメージ画像1](doc-photos/image1.jpg){#fig:image1}
 
 ### 記法(複数画像1)
 
@@ -101,15 +101,15 @@ li > p {
 
 ```md
 ::: {.figures}
-![イメージ画像1](image1.jpg){#fig:image1_1 width=40%}
-![イメージ画像2](image2.jpg){#fig:image1_2 width=40%}
+![イメージ画像1](doc-photos/image1.jpg){#fig:image1_1 width=40%}
+![イメージ画像2](doc-photos/image2.jpg){#fig:image1_2 width=40%}
 :::
 ```
 
 ### 見え方(複数画像1)
 ::: {.figures}
-![イメージ画像1](image1.jpg){#fig:image1_1 width=40%}
-![イメージ画像2](image2.jpg){#fig:image1_2 width=40%}
+![イメージ画像1](doc-photos/image1.jpg){#fig:image1_1 width=40%}
+![イメージ画像2](doc-photos/image2.jpg){#fig:image1_2 width=40%}
 :::
 
 ### 記法(複数画像2)
@@ -117,19 +117,19 @@ li > p {
 
 ```md
 ::: {.figures cols=2}
-![イメージ画像1](image1.jpg){#fig:image1_1}
-![イメージ画像2](image2.jpg){#fig:image1_2}
-![イメージ画像2](image3.jpg){#fig:image1_2}
-![イメージ画像2](image4.jpg){#fig:image1_2}
+![イメージ画像1](doc-photos/image1.jpg){#fig:image1_1}
+![イメージ画像2](doc-photos/image2.jpg){#fig:image1_2}
+![イメージ画像2](doc-photos/image3.jpg){#fig:image1_2}
+![イメージ画像2](doc-photos/image4.jpg){#fig:image1_2}
 :::
 ```
 
 ### 記法(複数画像2)
 ::: {.figures cols=2}
-![イメージ画像1](image1.jpg){#fig:image1_1}
-![イメージ画像2](image2.jpg){#fig:image1_2}
-![イメージ画像2](image3.jpg){#fig:image1_2}
-![イメージ画像2](image4.jpg){#fig:image1_2}
+![イメージ画像1](doc-photos/image1.jpg){#fig:image1_1}
+![イメージ画像2](doc-photos/image2.jpg){#fig:image1_2}
+![イメージ画像2](doc-photos/image3.jpg){#fig:image1_2}
+![イメージ画像2](doc-photos/image4.jpg){#fig:image1_2}
 :::
 
 ### 記法(複数画像3)
@@ -137,19 +137,19 @@ li > p {
 
 ```md
 ::: {.figures height=5cm}
-![イメージ画像1](image1.jpg){#fig:image1_1}
-![イメージ画像2](image2.jpg){#fig:image1_2}
-![イメージ画像2](image3.jpg){#fig:image1_2}
-![イメージ画像2](image4.jpg){#fig:image1_2}
+![イメージ画像1](doc-photos/image1.jpg){#fig:image1_1}
+![イメージ画像2](doc-photos/image2.jpg){#fig:image1_2}
+![イメージ画像2](doc-photos/image3.jpg){#fig:image1_2}
+![イメージ画像2](doc-photos/image4.jpg){#fig:image1_2}
 :::
 ```
 
 ### 記法(複数画像4)
 ::: {.figures height=5cm}
-![イメージ画像1](image1.jpg){#fig:image1_1}
-![イメージ画像2](image2.jpg){#fig:image1_2}
-![イメージ画像2](image3.jpg){#fig:image1_2}
-![イメージ画像2](image4.jpg){#fig:image1_2}
+![イメージ画像1](doc-photos/image1.jpg){#fig:image1_1}
+![イメージ画像2](doc-photos/image2.jpg){#fig:image1_2}
+![イメージ画像2](doc-photos/image3.jpg){#fig:image1_2}
+![イメージ画像2](doc-photos/image4.jpg){#fig:image1_2}
 :::
 
 ## 改ページ
