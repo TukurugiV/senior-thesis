@@ -476,5 +476,5 @@ sequenceDiagram
 
 | ツール                         | 用途                   |
 | :----------------------------- | :--------------------- |
-| Node.js + @mermaid-js/mermaid-cli | Mermaid ダイアグラム描画 |
+| Node.js + \@mermaid-js/mermaid-cli | Mermaid ダイアグラム描画 |
 | VSCode + Markdown Preview Enhanced | プレビュー環境         |

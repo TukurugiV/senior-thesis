@@ -529,6 +529,18 @@ end
 
 -- Paraブロック内の@import記法を処理
 local function processImport(el)
+  -- Paraブロックが単一の要素（@import文のみ）かチェック
+  -- インラインコード内の@importや、他のテキストと混在している場合は処理しない
+  if #el.content ~= 1 then
+    return nil
+  end
+
+  -- 最初の要素がStrで、@importで始まる場合のみ処理
+  local firstElem = el.content[1]
+  if firstElem.t ~= "Str" then
+    return nil
+  end
+
   local text = pandoc.utils.stringify(el)
 
   -- @import "ファイルパス" パターンを検出
