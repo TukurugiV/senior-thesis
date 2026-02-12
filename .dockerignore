@@ -1,0 +1,44 @@
+# Git
+.git/
+.gitignore
+
+# Generated files
+*.pdf
+output/
+mermaid/
+
+# LaTeX temporary files
+*.aux
+*.out
+*.toc
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.log
+
+# IDE
+.vscode/
+.idea/
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Portable tools (Windows)
+tools/
+env.ps1
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Rust
+src/rust/target/
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
